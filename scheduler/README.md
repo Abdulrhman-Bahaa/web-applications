@@ -4,4 +4,4 @@ I was developing this web app long ago using the LAMP stack without any framewor
 
 The Scheduler Web Application is a lightweight and responsive tool designed to help users manage their schedules efficiently. It features a clean UI, interactive elements, and customizable styles, with cookies and database features.
 
-![Image](images/schedular_0.png)
+![Image](../images/schedular_0.png)
