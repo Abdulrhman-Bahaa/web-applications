@@ -1,0 +1,19 @@
+2026-01-08 23:16:08,562 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8000
+ * Running on http://192.168.1.111:8000
+2026-01-08 23:16:08,563 INFO: [33mPress CTRL+C to quit[0m
+2026-01-08 23:16:13,406 ERROR: Error occurred: 400 Bad Request: The browser (or proxy) sent a request that this server could not understand.
+2026-01-08 23:16:13,407 INFO: 127.0.0.1 - - [08/Jan/2026 23:16:13] "POST /upload HTTP/1.1" 200 -
+2026-01-08 23:17:52,970 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8000
+ * Running on http://192.168.1.111:8000
+2026-01-08 23:17:52,970 INFO: [33mPress CTRL+C to quit[0m
+2026-01-08 23:18:03,782 ERROR: Error occurred: 400 Bad Request: The browser (or proxy) sent a request that this server could not understand.
+2026-01-08 23:18:03,783 INFO: 127.0.0.1 - - [08/Jan/2026 23:18:03] "POST /upload HTTP/1.1" 200 -
+2026-01-08 23:29:46,018 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8000
+ * Running on http://192.168.1.111:8000
+2026-01-08 23:29:46,019 INFO: [33mPress CTRL+C to quit[0m

@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <title>MalwareScope</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .hash {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+    }
+  </style>
+</head>
+
+<body>
+  <header
+    style="background-color: #050a12; padding: 10px 40px; display: flex; align-items: center; border-bottom: 2px solid #ff5733;">
+    <div class="logo-container" style="display: flex; align-items: center;">
+      <a href="/">
+        <img src="{{ url_for('static', filename='MalwareScope_Logo.png') }}" alt="MalwareScope"
+          style="height: 70px; margin-right: 15px;">
+      </a>
+    </div>
+    <nav style="margin-left: auto;">
+      <a href="#" style="color: #00d1ff; text-decoration: none; margin-left: 20px; font-weight: bold;">Dashboard</a>
+      <a href="#" style="color: #ffffff; text-decoration: none; margin-left: 20px;">History</a>
+      <a href="#" style="color: #ffffff; text-decoration: none; margin-left: 20px;">Settings</a>
+    </nav>
+  </header>
+  <div class="container" style="margin-top: 3rem;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="h3">Sample Analysis</h1>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title">{{ sample.file_name }}</h5>
+        <p class="text-muted mb-0">Sample ID: {{ sample.id }}</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-3 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Analysis Sections</h5>
+            <div class="nav flex-column nav-pills" id="analysisTabs" role="tablist" aria-orientation="vertical">
+              <a class="nav-link active" id="static-tab" data-bs-toggle="pill" href="#static" role="tab"
+                aria-controls="static" aria-selected="true">Static Analysis</a>
+              <a class="nav-link" id="dynamic-tab" data-bs-toggle="pill" href="#dynamic" role="tab"
+                aria-controls="dynamic" aria-selected="false">Dynamic Analysis</a>
+              <a class="nav-link" id="behavioral-tab" data-bs-toggle="pill" href="#behavioral" role="tab"
+                aria-controls="behavioral" aria-selected="false">Behavioral Analysis</a>
+              <a class="nav-link" id="memory-tab" data-bs-toggle="pill" href="#memory" role="tab" aria-controls="memory"
+                aria-selected="false">Memory Analysis</a>
+              <a class="nav-link" id="reverse-tab" data-bs-toggle="pill" href="#reverse" role="tab"
+                aria-controls="reverse" aria-selected="false">Reverse Engineering</a>
+              <a class="nav-link" id="indicator-tab" data-bs-toggle="pill" href="#indicator" role="tab"
+                aria-controls="indicator" aria-selected="false">Indicator Extraction</a>
+              <a class="nav-link" id="reporting-tab" data-bs-toggle="pill" href="#reporting" role="tab"
+                aria-controls="reporting" aria-selected="false">Reporting &amp; Documentation</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-9">
+        <div class="tab-content" id="analysisTabsContent">
+          <div class="tab-pane fade show active" id="static" role="tabpanel" aria-labelledby="static-tab">
+            <div class="card mb-3">
+              <div class="card-header">Hashes</div>
+              <div class="card-body">
+                <dl class="row mb-0">
+                  <dt class="col-sm-3">MD5</dt>
+                  <dd class="col-sm-9 hash">{{ sample.hash_md5 }}</dd>
+
+                  <dt class="col-sm-3">SHA1</dt>
+                  <dd class="col-sm-9 hash">{{ sample.hash_sha1 }}</dd>
+
+                  <dt class="col-sm-3">SHA256</dt>
+                  <dd class="col-sm-9 hash">{{ sample.hash_sha256 }}</dd>
+                </dl>
+              </div>
+            </div>
+
+            <div class="card mb-3">
+              <div class="card-header">File Information</div>
+              <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                  <li><strong>Size:</strong> {{ sample.file_size }} bytes</li>
+                  <li><strong>Type:</strong> {{ sample.file_type or 'unknown' }}</li>
+                  <li><strong>Stored as:</strong> {{ sample.file_name }}</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">Actions</div>
+              <div class="card-body">
+                <a class="btn btn-primary w-100 mb-2" href="/uploads/{{ sample.file_name }}" role="button">Download
+                  file</a>
+                <a class="btn btn-outline-danger w-100" href="#" role="button">Submit to sandbox</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="dynamic" role="tabpanel" aria-labelledby="dynamic-tab">
+            <div class="card mb-3">
+              <div class="card-header">Dynamic Analysis</div>
+              <div class="card-body">
+                <p class="mb-0">No dynamic analysis results available yet.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="behavioral" role="tabpanel" aria-labelledby="behavioral-tab">
+            <div class="card mb-3">
+              <div class="card-header">Behavioral Analysis</div>
+              <div class="card-body">
+                <p class="mb-0">Behavioral telemetry and high-level behavior summary will appear here.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="memory" role="tabpanel" aria-labelledby="memory-tab">
+            <div class="card mb-3">
+              <div class="card-header">Memory Analysis</div>
+              <div class="card-body">
+                <p class="mb-0">Memory dumps, stacks, and related artifacts will appear here.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="reverse" role="tabpanel" aria-labelledby="reverse-tab">
+            <div class="card mb-3">
+              <div class="card-header">Reverse Engineering</div>
+              <div class="card-body">
+                <p class="mb-0">Disassembly, function listings, and notes go here.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="indicator" role="tabpanel" aria-labelledby="indicator-tab">
+            <div class="card mb-3">
+              <div class="card-header">Indicator Extraction</div>
+              <div class="card-body">
+                <p class="mb-0">Extracted IOCs (domains, IPs, hashes, mutexes, etc.) will appear here.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane fade" id="reporting" role="tabpanel" aria-labelledby="reporting-tab">
+            <div class="card mb-3">
+              <div class="card-header">Reporting &amp; Documentation</div>
+              <div class="card-body">
+                <p class="mb-0">Reporting artifacts, export options and documentation links.</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">Raw Record</div>
+              <div class="card-body">
+                <pre class="small">{{ sample | tojson(indent=2) }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
