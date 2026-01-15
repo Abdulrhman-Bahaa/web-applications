@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 
 <head>
     <meta charset="utf-8">
@@ -29,12 +29,22 @@
 
         body {
             padding-top: 100px;
+
+        }
+
+        .nav-link-active {
+            color: #00d1ff !important;
+            font-weight: bold;
+        }
+
+        .nav-link-inactive {
+            color: #ffffff !important;
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 
-<body>
+<body class="d-flex flex-column min-vh-100">
     <header
         style="background-color: #050a12; padding: 10px 40px; display: flex; align-items: center; border-bottom: 2px solid #ff5733;">
         <div class="logo-container" style="display: flex; align-items: center;">
@@ -44,14 +54,16 @@
             </a>
         </div>
         <nav style="margin-left: auto;">
-            <a href="/"
-                style="color: #00d1ff; text-decoration: none; margin-left: 20px; font-weight: bold;">Dashboard</a>
-            <a href="#" style="color: #ffffff; text-decoration: none; margin-left: 20px;">History</a>
-            <a href="#" style="color: #ffffff; text-decoration: none; margin-left: 20px;">Settings</a>
+            <a href="/" style="text-decoration: none; margin-left: 20px;"
+                class="{% if request.path == '/' %}nav-link-active{% else %}nav-link-inactive{% endif %}">Dashboard</a>
+            <a href="/history" style="text-decoration: none; margin-left: 20px;"
+                class="{% if request.path == '/history' %}nav-link-active{% else %}nav-link-inactive{% endif %}">History</a>
+            <a href="/settings" style="text-decoration: none; margin-left: 20px;"
+                class="{% if request.path == '/settings' %}nav-link-active{% else %}nav-link-inactive{% endif %}">Settings</a>
         </nav>
     </header>
 
-    <div class="container" style="margin-top: 3rem;">
+    <div class="container flex-fill" style="margin-top: 3rem;">
         {% block content %}{% endblock %}
     </div>
 

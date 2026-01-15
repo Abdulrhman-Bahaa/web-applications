@@ -120,9 +120,28 @@ def analysis(sample_id):
         return 'Sample not found', 404
 
 
-@app.route("/test")
-def test():
-    return render_template('base.html')
+@app.route("/settings")
+def settings():
+    return render_template('settings.html')
+
+
+@app.route("/history")
+def history():
+    try:
+        conn = mariadb.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM samples ORDER BY id DESC LIMIT 50")
+        samples = cursor.fetchall()
+    except Exception:
+        samples = []
+    finally:
+        try:
+            cursor.close()
+            conn.close()
+        except Exception:
+            pass
+
+    return render_template('history.html', samples=samples)
 
 
 if __name__ == '__main__':
