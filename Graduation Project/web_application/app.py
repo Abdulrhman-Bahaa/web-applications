@@ -120,5 +120,10 @@ def analysis(sample_id):
         return 'Sample not found', 404
 
 
+@app.route("/test")
+def test():
+    return render_template('base.html')
+
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
