@@ -144,5 +144,27 @@ def history():
     return render_template('history.html', samples=samples)
 
 
+@app.route('/search', methods=['POST'])
+def search():
+    search_query = ''
+    # Get the value from the form input
+    search_query = request.form.get('search', '')
+    # You can now use search_query to filter files, database, etc.
+    conn = mariadb.connect(**db_config)
+    cursor = conn.cursor(dictionary=True)
+    sql = """SELECT * FROM samples
+           WHERE file_name LIKE %s
+           OR hash_md5 = %s
+           OR hash_sha1 = %s
+           OR hash_sha256 = %s
+           ORDER BY id DESC LIMIT 50"""
+    like_query = f"%{search_query}%"
+    cursor.execute(sql, (like_query, search_query, search_query, search_query))
+    samples = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template('history.html', samples=samples, search_query=search_query)
+
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)

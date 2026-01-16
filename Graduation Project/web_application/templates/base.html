@@ -40,6 +40,46 @@
         .nav-link-inactive {
             color: #ffffff !important;
         }
+
+        .theme-toggle-container {
+            margin-left: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-check {
+            margin: 0;
+        }
+
+        .form-check-input {
+            cursor: pointer;
+            width: 2.5em;
+            height: 1.25em;
+            margin-top: 0;
+        }
+
+        .form-check-input:checked {
+            background-color: #ff5733;
+            border-color: #ff5733;
+        }
+
+        .form-check-label {
+            cursor: pointer;
+            margin-bottom: 0;
+            color: #ffffff;
+            margin-left: 0.5rem;
+        }
+
+        .theme-text {
+            color: #ffffff;
+            cursor: pointer;
+            margin-left: 20px;
+            transition: color 0.3s ease;
+        }
+
+        .theme-text:hover {
+            color: #ff5733;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -53,15 +93,17 @@
                     style="height: 70px; margin-right: 15px;">
             </a>
         </div>
-        <nav style="margin-left: auto;">
+        <nav style="margin-left: auto; display: flex; align-items: center;">
             <a href="/" style="text-decoration: none; margin-left: 20px;"
                 class="{% if request.path == '/' %}nav-link-active{% else %}nav-link-inactive{% endif %}">Dashboard</a>
             <a href="/history" style="text-decoration: none; margin-left: 20px;"
                 class="{% if request.path == '/history' %}nav-link-active{% else %}nav-link-inactive{% endif %}">History</a>
             <a href="/settings" style="text-decoration: none; margin-left: 20px;"
                 class="{% if request.path == '/settings' %}nav-link-active{% else %}nav-link-inactive{% endif %}">Settings</a>
+            <span id="themeToggle" class="theme-text">🌙 Dark</span>
         </nav>
     </header>
+
 
     <div class="container flex-fill" style="margin-top: 3rem;">
         {% block content %}{% endblock %}
@@ -73,6 +115,46 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Theme toggle functionality
+        const htmlElement = document.documentElement;
+        const themeToggle = document.getElementById('themeToggle');
+        const THEME_KEY = 'malwareScopeTheme';
+        const hero = document.querySelector('.hero');
+
+        // Initialize theme from localStorage or system preference
+        function initializeTheme() {
+            let theme = localStorage.getItem(THEME_KEY);
+            if (!theme) {
+                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            setTheme(theme);
+        }
+
+        // Set theme and update UI
+        function setTheme(theme) {
+            htmlElement.setAttribute('data-bs-theme', theme);
+            localStorage.setItem(THEME_KEY, theme);
+            themeToggle.textContent = theme === 'dark' ? 'Dark Theme' : 'Light Theme';
+
+            if (theme === 'dark') {
+                // Change the hero class background for dark theme css
+                hero.style.background = '#050a12';
+            } else {
+                hero.style.background = '#f8f9fa';
+            }
+        }
+
+        // Toggle between themes
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        });
+
+        // Initialize on page load
+        initializeTheme();
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 
