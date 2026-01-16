@@ -1,0 +1,30 @@
+.btn.btn-primary.btn-sm:hover {
+    background-color: #ff784e;
+    border-color: #ff784e;
+}
+
+.btn.btn-primary.btn-sm {
+    background-color: #ff784e;
+    border-color: #ff784e;
+}
+
+.btn-primary {
+    background-color: #ff784e;
+    border-color: #ff784e;
+}
+
+.btn-primary:hover {
+    background-color: #ff784e;
+    border-color: #ff784e;
+}
+
+.btn.btn-sm.btn-outline-primary:hover {
+    background-color: #00d1ff;
+    color: white;
+    border-color: #00d1ff;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: #00d1ff;
+    --bs-btn-border-color: #00d1ff;
+}
