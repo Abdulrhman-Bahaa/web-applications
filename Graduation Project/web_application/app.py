@@ -3,7 +3,7 @@ import requests
 import hashlib
 from flask import Flask, request, render_template, redirect, url_for
 from werkzeug.utils import secure_filename
-from models import db, Samples
+from models import db, Sample
 
 
 app = Flask(__name__)
@@ -27,7 +27,7 @@ with app.app_context():
 def home():
     try:
         # Fetch the 50 most recent samples, ordered by id descending
-        samples = Samples.query.order_by(Samples.id.desc()).limit(50).all()
+        samples = Sample.query.order_by(Sample.id.desc()).limit(50).all()
     except Exception as e:
         print(f"Error fetching samples: {e}")
         samples = []
@@ -51,7 +51,7 @@ def upload():
 
 @app.route('/analysis/<int:sample_id>')
 def analysis(sample_id):
-    sample = db.session.get(Samples, sample_id)
+    sample = db.session.get(Sample, sample_id)
 
     if sample:
         return render_template('analysis.html', sample=sample)
@@ -87,7 +87,7 @@ def submit():
     file_size = os.path.getsize(filepath)
     file_type = os.path.splitext(filename)[1].lstrip('.').lower()
 
-    new_sample = Samples(
+    new_sample = Sample(
         file_name=filename,
         hash_md5=hash_md5,
         hash_sha1=hash_sha1,
@@ -109,7 +109,7 @@ def settings():
 
 @app.route("/history")
 def history():
-    samples = Samples.query.order_by(Samples.id.desc()).limit(50).all()
+    samples = Sample.query.order_by(Sample.id.desc()).limit(50).all()
     return render_template('history.html', samples=samples)
 
 
@@ -119,12 +119,12 @@ def search():
     # Get the value from the form input
     search_query = request.form.get('search', '')
 
-    samples = Samples.query.filter(
-        (Samples.file_name.ilike(f"%{search_query}%")) |
-        (Samples.hash_md5 == search_query) |
-        (Samples.hash_sha1 == search_query) |
-        (Samples.hash_sha256 == search_query)
-    ).order_by(Samples.id.desc()).limit(50).all()
+    samples = Sample.query.filter(
+        (Sample.file_name.ilike(f"%{search_query}%")) |
+        (Sample.hash_md5 == search_query) |
+        (Sample.hash_sha1 == search_query) |
+        (Sample.hash_sha256 == search_query)
+    ).order_by(Sample.id.desc()).limit(50).all()
 
     return render_template('history.html', samples=samples, search_query=search_query)
 

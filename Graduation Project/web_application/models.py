@@ -5,7 +5,7 @@ from datetime import datetime
 db = SQLAlchemy()
 
 
-class Samples(db.Model):
+class Sample(db.Model):
 
     id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
     hash_md5 = db.Column(db.CHAR(32), unique=True, nullable=False)
