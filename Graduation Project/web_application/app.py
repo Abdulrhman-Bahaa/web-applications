@@ -1,39 +1,36 @@
 import os
 import requests
-import mariadb
 import hashlib
-from flask import Flask, request, render_template, redirect, url_for, flash
+from flask import Flask, request, render_template, redirect, url_for
 from werkzeug.utils import secure_filename
+from models import db, Samples
+
 
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'static/uploads'
 
 
-db_config = {
-    'host': 'localhost',
-    'user': 'analyst',
-    'password': 'pass',
-    'database': 'malware_analysis'
-}
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://analyst:pass@localhost:3306/malware_analysis'
+# optional, avoids warnings
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize the database with the app
+db.init_app(app)
+
+# Create tables if they don't exist
+with app.app_context():
+    db.create_all()
 
 
 @app.route('/')
 def home():
-    # fetch recent samples to allow the UI to enable/disable actions
     try:
-        conn = mariadb.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM samples ORDER BY id DESC LIMIT 50")
-        samples = cursor.fetchall()
-    except Exception:
+        # Fetch the 50 most recent samples, ordered by id descending
+        samples = Samples.query.order_by(Samples.id.desc()).limit(50).all()
+    except Exception as e:
+        print(f"Error fetching samples: {e}")
         samples = []
-    finally:
-        try:
-            cursor.close()
-            conn.close()
-        except Exception:
-            pass
 
     return render_template('index.html', samples=samples)
 
@@ -52,6 +49,16 @@ def upload():
     return render_template('submit.html', filename=filename, file_size=file_size)
 
 
+@app.route('/analysis/<int:sample_id>')
+def analysis(sample_id):
+    sample = db.session.get(Samples, sample_id)
+
+    if sample:
+        return render_template('analysis.html', sample=sample)
+    else:
+        return 'Sample not found', 404
+
+
 @app.route('/submit', methods=['POST'])
 def submit():
     # Handle submission logic here
@@ -66,7 +73,6 @@ def submit():
     # response = requests.post('http://localhost:8000/upload', files=files)
 
     # Calculate hashes
-
     def calc_hash(file_path, algo):
         hash_func = hashlib.new(algo)
         with open(file_path, 'rb') as f:
@@ -81,43 +87,19 @@ def submit():
     file_size = os.path.getsize(filepath)
     file_type = os.path.splitext(filename)[1].lstrip('.').lower()
 
-    conn = mariadb.connect(**db_config)
-    cursor = conn.cursor()
+    new_sample = Samples(
+        file_name=filename,
+        hash_md5=hash_md5,
+        hash_sha1=hash_sha1,
+        hash_sha256=hash_sha256,
+        file_size=file_size,
+        file_type=file_type
+    )
 
-    sql = """
-    INSERT INTO samples
-    (file_name, hash_md5, hash_sha1, hash_sha256, file_size, file_type)
-    VALUES (%s, %s, %s, %s, %s, %s)
-    """
-    values = (filename, hash_md5, hash_sha1, hash_sha256,
-              file_size, file_type)
-    cursor.execute(sql, values)
-    conn.commit()
-    # capture inserted id and redirect to its analysis page
-    sample_id = cursor.lastrowid
+    db.session.add(new_sample)
+    db.session.commit()
 
-    cursor.close()
-    conn.close()
-
-    return redirect(url_for('analysis', sample_id=sample_id))
-
-
-@app.route('/analysis/<int:sample_id>')
-def analysis(sample_id):
-    conn = mariadb.connect(**db_config)
-    cursor = conn.cursor(dictionary=True)
-
-    sql = "SELECT * FROM samples WHERE id = %s"
-    cursor.execute(sql, (sample_id,))
-    sample = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
-    if sample:
-        return render_template('analysis.html', sample=sample)
-    else:
-        return 'Sample not found', 404
+    return redirect(url_for('analysis', sample_id=new_sample.id))
 
 
 @app.route("/settings")
@@ -127,20 +109,7 @@ def settings():
 
 @app.route("/history")
 def history():
-    try:
-        conn = mariadb.connect(**db_config)
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM samples ORDER BY id DESC LIMIT 50")
-        samples = cursor.fetchall()
-    except Exception:
-        samples = []
-    finally:
-        try:
-            cursor.close()
-            conn.close()
-        except Exception:
-            pass
-
+    samples = Samples.query.order_by(Samples.id.desc()).limit(50).all()
     return render_template('history.html', samples=samples)
 
 
@@ -149,20 +118,14 @@ def search():
     search_query = ''
     # Get the value from the form input
     search_query = request.form.get('search', '')
-    # You can now use search_query to filter files, database, etc.
-    conn = mariadb.connect(**db_config)
-    cursor = conn.cursor(dictionary=True)
-    sql = """SELECT * FROM samples
-           WHERE file_name LIKE %s
-           OR hash_md5 = %s
-           OR hash_sha1 = %s
-           OR hash_sha256 = %s
-           ORDER BY id DESC LIMIT 50"""
-    like_query = f"%{search_query}%"
-    cursor.execute(sql, (like_query, search_query, search_query, search_query))
-    samples = cursor.fetchall()
-    cursor.close()
-    conn.close()
+
+    samples = Samples.query.filter(
+        (Samples.file_name.ilike(f"%{search_query}%")) |
+        (Samples.hash_md5 == search_query) |
+        (Samples.hash_sha1 == search_query) |
+        (Samples.hash_sha256 == search_query)
+    ).order_by(Samples.id.desc()).limit(50).all()
+
     return render_template('history.html', samples=samples, search_query=search_query)
 
 
