@@ -1,36 +1,46 @@
+from dataclasses import Field
+import datetime
 import os
+from urllib import response
 import requests
-import hashlib
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, json, request, render_template, redirect, url_for
 from werkzeug.utils import secure_filename
 from models import db, Sample
+from flask_socketio import SocketIO
+from pydantic import BaseModel, Field
 
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
-UPLOAD_FOLDER = 'static/uploads'
+DATA_ACCESS_SERVICE_URL = 'http://localhost:5001'
+SAMPLES_API_URL = f'{DATA_ACCESS_SERVICE_URL}/samples/'
+SAMPLE_UPLOAD_API_URL = f'{DATA_ACCESS_SERVICE_URL}/samples/upload/'
 
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://analyst:pass@localhost:3306/malware_analysis'
-# optional, avoids warnings
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+class SampleSchema(BaseModel):
+    id: int
+    hash_md5: str = Field(..., min_length=32, max_length=32)
+    hash_sha1: str = Field(None, min_length=40, max_length=40)
+    hash_sha256: str = Field(None, min_length=64, max_length=64)
+    file_name: str = Field(..., max_length=255)
+    file_size: int
+    file_type: str = Field(None, max_length=100)
+    upload_date: datetime.datetime
+    static_analysis: bool
+    dynamic_analysis: bool
 
-# Initialize the database with the app
-db.init_app(app)
-
-# Create tables if they don't exist
-with app.app_context():
-    db.create_all()
+    class Config:
+        arbitrary_types_allowed = True
 
 
 @app.route('/')
 def home():
-    try:
-        # Fetch the 50 most recent samples, ordered by id descending
-        samples = Sample.query.order_by(Sample.id.desc()).limit(50).all()
-    except Exception as e:
-        print(f"Error fetching samples: {e}")
-        samples = []
+
+    response = requests.get(SAMPLES_API_URL)
+    response.raise_for_status()
+
+    samples = [SampleSchema.model_validate(item) for item in response.json()]
 
     return render_template('index.html', samples=samples)
 
@@ -40,13 +50,11 @@ def upload():
     file = request.files['file']
 
     filename = secure_filename(file.filename)
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
 
-    file.save(filepath)
+    files = {"file": (filename, file.stream, file.content_type)}
+    response = requests.post(SAMPLE_UPLOAD_API_URL, files=files)
 
-    # compute saved file size and render confirmation page to allow analysis
-    file_size = os.path.getsize(filepath)
-    return render_template('submit.html', filename=filename, file_size=file_size)
+    return render_template('submit.html', filename=filename)
 
 
 @app.route('/analysis/<int:sample_id>')
@@ -61,45 +69,8 @@ def analysis(sample_id):
 
 @app.route('/submit', methods=['POST'])
 def submit():
-    # Handle submission logic here
-    filename = request.form['filename']
-    file_size = request.form['file_size']
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
 
-    # Send to analysis server
-    # files = {
-    #     'file': (filename, open(filepath, 'rb'))
-    # }
-    # response = requests.post('http://localhost:8000/upload', files=files)
-
-    # Calculate hashes
-    def calc_hash(file_path, algo):
-        hash_func = hashlib.new(algo)
-        with open(file_path, 'rb') as f:
-            while chunk := f.read(8192):
-                hash_func.update(chunk)
-        return hash_func.hexdigest()
-
-    hash_md5 = calc_hash(filepath, 'md5')
-    hash_sha1 = calc_hash(filepath, 'sha1')
-    hash_sha256 = calc_hash(filepath, 'sha256')
-
-    file_size = os.path.getsize(filepath)
-    file_type = os.path.splitext(filename)[1].lstrip('.').lower()
-
-    new_sample = Sample(
-        file_name=filename,
-        hash_md5=hash_md5,
-        hash_sha1=hash_sha1,
-        hash_sha256=hash_sha256,
-        file_size=file_size,
-        file_type=file_type
-    )
-
-    db.session.add(new_sample)
-    db.session.commit()
-
-    return redirect(url_for('analysis', sample_id=new_sample.id))
+    return redirect(url_for('home'))
 
 
 @app.route("/settings")
@@ -129,5 +100,37 @@ def search():
     return render_template('history.html', samples=samples, search_query=search_query)
 
 
+thread_started = False
+a = 1
+
+
+def send_data_periodically():
+    global a
+    while True:
+        socketio.emit("analysis_state", {
+                      "type": "static", "state": "running", "progress": a})
+        socketio.emit("analysis_state", {
+                      "type": "dynamic", "state": "running", "progress": a})
+
+        a += 1
+        socketio.sleep(1)
+
+        socketio.emit("analysis_state", {
+                      "type": "static", "state": "failed", "progress": a})
+        socketio.emit("analysis_state", {
+                      "type": "dynamic", "state": "complete", "progress": a})
+
+        socketio.sleep(1)
+
+
+@socketio.on("connect")
+def handle_connect():
+    global thread_started
+    if not thread_started:
+        socketio.start_background_task(send_data_periodically)
+        thread_started = True
+
+
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)

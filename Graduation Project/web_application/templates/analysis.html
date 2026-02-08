@@ -2,6 +2,10 @@
 
 {% block title %}MalwareScope - Analysis{% endblock %}
 
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h1 class="h3">Sample Analysis</h1>
@@ -20,8 +24,10 @@
       <div class="card-body">
         <h5 class="card-title">Analysis Sections</h5>
         <div class="nav flex-column nav-pills" id="analysisTabs" role="tablist" aria-orientation="vertical">
-          <a class="nav-link active" id="static-tab" data-bs-toggle="pill" href="#static" role="tab"
-            aria-controls="static" aria-selected="true">Static Analysis</a>
+          <a class="nav-link active" id="summary-tab" data-bs-toggle="pill" href="#summary" role="tab"
+            aria-controls="summary" aria-selected="true">Summary</a>
+          <a class="nav-link" id="static-tab" data-bs-toggle="pill" href="#static" role="tab" aria-controls="static"
+            aria-selected="false">Static Analysis</a>
           <a class="nav-link" id="dynamic-tab" data-bs-toggle="pill" href="#dynamic" role="tab" aria-controls="dynamic"
             aria-selected="false">Dynamic Analysis</a>
           <a class="nav-link" id="behavioral-tab" data-bs-toggle="pill" href="#behavioral" role="tab"
@@ -41,7 +47,7 @@
 
   <div class="col-lg-9">
     <div class="tab-content" id="analysisTabsContent">
-      <div class="tab-pane fade show active" id="static" role="tabpanel" aria-labelledby="static-tab">
+      <div class="tab-pane fade show active" id="summary" role="tabpanel" aria-labelledby="summary-tab">
         <div class="card mb-3">
           <div class="card-header">Hashes</div>
           <div class="card-body">
@@ -79,9 +85,34 @@
         </div>
       </div>
 
+      <div class="tab-pane fade" id="static" role="tabpanel" aria-labelledby="static-tab">
+        <div class="card mb-3">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+              <span id="static-status-icon"></span>
+              Static Analysis
+            </span>
+          </div>
+
+          <div class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" id="static-progress-bar"
+              role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" style="width: 75%"></div>
+          </div>
+
+          <div class="card-body">
+            <p class="mb-0">No static analysis results available yet.</p>
+          </div>
+        </div>
+      </div>
+
       <div class="tab-pane fade" id="dynamic" role="tabpanel" aria-labelledby="dynamic-tab">
         <div class="card mb-3">
-          <div class="card-header">Dynamic Analysis</div>
+          <div class="card-header">
+            <span>
+              <span id="dynamic-status-icon"></span>
+              Dynamic Analysis
+            </span>
+          </div>
           <div class="card-body">
             <p class="mb-0">No dynamic analysis results available yet.</p>
           </div>
@@ -136,4 +167,58 @@
     </div>
   </div>
 </div>
+
+<script>
+  function analysisIconState(analysis, state) {
+
+    icon = null;
+
+    if (analysis === 'static') {
+      icon = document.getElementById('static-status-icon');
+    }
+    else if (analysis === 'dynamic') {
+      icon = document.getElementById('dynamic-status-icon');
+    }
+
+    // Reset everything first
+    icon.className = '';       // remove all classes
+    icon.style = '';           // remove inline styles
+    icon.innerHTML = '';       // remove inner content
+
+    if (state === 'running') {
+      // Add Bootstrap spinner classes
+      icon.classList.add('spinner-border', 'spinner-border-sm', 'text-primary');
+    }
+    else if (state === 'failed') {
+      // Red X
+      icon.style.color = 'red';
+      icon.style.fontWeight = 'bold';
+      icon.innerHTML = '&times;'; // ×
+    }
+    else if (state === 'complete') {
+      // Use a green check mark
+      icon.style.color = 'green';
+      icon.style.fontWeight = 'bold';
+      icon.innerHTML = '&#10004;'; // ✔ check mark
+    }
+  }
+
+  function updateProgressBar(progress) {
+    const progressBar = document.getElementById('static-progress-bar');
+    progressBar.style.width = progress + '%';
+    progressBar.setAttribute('aria-valuenow', progress);
+    progressBar.textContent = progress + '%';
+  }
+
+  const socket = io();
+
+  socket.on("analysis_state", function (data) {
+    console.log("Received analysis_state:", data);
+    analysisIconState(data.type, data.state);
+    if (data.type === "static") {
+      updateProgressBar(data.progress);
+    }
+  });
+
+</script>
 {% endblock %}
