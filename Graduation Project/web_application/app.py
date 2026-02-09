@@ -5,7 +5,6 @@ from urllib import response
 import requests
 from flask import Flask, json, request, render_template, redirect, url_for
 from werkzeug.utils import secure_filename
-from models import db, Sample
 from flask_socketio import SocketIO
 from pydantic import BaseModel, Field
 
