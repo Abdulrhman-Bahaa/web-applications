@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field
 
 
 app = Flask(__name__)
-socketio = SocketIO(app)
 
 DATA_ACCESS_SERVICE_URL = 'http://localhost:5001'
 SAMPLES_API_URL = f'{DATA_ACCESS_SERVICE_URL}/samples/'
@@ -99,37 +98,6 @@ def search():
     return render_template('history.html', samples=samples, search_query=search_query)
 
 
-thread_started = False
-a = 1
-
-
-def send_data_periodically():
-    global a
-    while True:
-        socketio.emit("analysis_state", {
-                      "type": "static", "state": "running", "progress": a})
-        socketio.emit("analysis_state", {
-                      "type": "dynamic", "state": "running", "progress": a})
-
-        a += 1
-        socketio.sleep(1)
-
-        socketio.emit("analysis_state", {
-                      "type": "static", "state": "failed", "progress": a})
-        socketio.emit("analysis_state", {
-                      "type": "dynamic", "state": "complete", "progress": a})
-
-        socketio.sleep(1)
-
-
-@socketio.on("connect")
-def handle_connect():
-    global thread_started
-    if not thread_started:
-        socketio.start_background_task(send_data_periodically)
-        thread_started = True
-
-
 if __name__ == '__main__':
 
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
