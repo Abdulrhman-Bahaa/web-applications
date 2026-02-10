@@ -1,3 +1,5 @@
+import shutil
+
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException
 import uvicorn
 import hashlib
@@ -140,6 +142,55 @@ def update_sample_analysis(sha256: str, analysis_status: AnalysisStatusUpdate, d
     db.commit()
     db.refresh(sample)
     return sample
+
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    contents = await file.read()
+
+    # save to disk in uploads folder
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+
+# @app.post("/upload")
+# async def upload_file(file: UploadFile = File(...)):
+#     filename = Path(file.filename).name
+#     file_path = os.path.join(UPLOAD_DIR, filename)
+
+#     with open(file_path, "wb") as f:
+#         shutil.copyfileobj(file.file, f)
+
+#     return {"status": "ok", "filename": filename}
+
+
+@app.get("/download/{filename}")
+def download_file(filename: str):
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(file_path):
+        return {"error": "File not found"}
+    return FileResponse(file_path, media_type='application/octet-stream', filename=filename)
+
+
+@app.get("/json/{filename}")
+def get_file_as_json(filename: str):
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(file_path):
+        return {"error": "File not found"}
+    with open(file_path, "r") as f:
+        content = f.read()
+    return {"filename": filename, "content": content}
+
+
+@app.get("/text/{filename}")
+def get_file_as_text(filename: str):
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(file_path):
+        return {"error": "File not found"}
+    with open(file_path, "r") as f:
+        content = f.read()
+    return {"filename": filename, "content": content}
 
 
 if __name__ == '__main__':

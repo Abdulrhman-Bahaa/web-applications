@@ -1,6 +1,7 @@
 from dataclasses import Field
 import datetime
 import os
+import json as pyjson
 from urllib import response
 import requests
 from flask import Flask, json, request, render_template, redirect, url_for
@@ -57,10 +58,54 @@ def upload():
 
 @app.route('/analysis/<int:sample_id>')
 def analysis(sample_id):
-    sample = db.session.get(Sample, sample_id)
+    # sample = db.session.get(Sample, sample_id)
+
+    response = requests.get(f'{SAMPLES_API_URL}{sample_id}')
+    if response.status_code == 200:
+        try:
+            sample = SampleSchema.model_validate(response.json())
+        except Exception as e:
+            print(f"Sample validation error: {e}")
+            sample = None
+    else:
+        sample = None
+
+    print(f"Fetched sample data for sample_id {sample_id}: {sample}")
 
     if sample:
-        return render_template('analysis.html', sample=sample)
+        # Fetch static and dynamic analysis JSON from the data access service (per-sample)
+        static_analysis = None
+        dynamic_analysis = None
+
+        sha256 = getattr(sample, 'hash_sha256', None)
+        print(
+            f"Fetching analysis for sample {sample_id} with SHA256: {sha256}")
+
+        if sha256:
+            # Fetch static analysis from API
+            try:
+                sa_url = f"{DATA_ACCESS_SERVICE_URL}/json/{sha256}_static.json"
+                resp = requests.get(sa_url, timeout=5)
+                if resp.status_code == 200:
+                    static_analysis = resp.json()
+                    static_analysis = json.loads(static_analysis["content"])
+
+            except Exception as e:
+                print(f"Static analysis fetch error: {e}")
+                static_analysis = None
+
+            # Fetch dynamic analysis from API
+            try:
+                da_url = f"{DATA_ACCESS_SERVICE_URL}/json/{sha256}_dynamic.json"
+                resp = requests.get(da_url, timeout=5)
+                if resp.status_code == 200:
+                    dynamic_analysis = resp.json()
+                    dynamic_analysis = json.loads(dynamic_analysis["content"])
+            except Exception as e:
+                print(f"Dynamic analysis fetch error: {e}")
+                dynamic_analysis = None
+
+        return render_template('analysis.html', sample=sample, static_analysis=static_analysis, dynamic_analysis=dynamic_analysis)
     else:
         return 'Sample not found', 404
 

@@ -4,6 +4,7 @@
 
 {% block scripts %}
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -54,10 +55,8 @@
             <dl class="row mb-0">
               <dt class="col-sm-3">MD5</dt>
               <dd class="col-sm-9 hash">{{ sample.hash_md5 }}</dd>
-
               <dt class="col-sm-3">SHA1</dt>
               <dd class="col-sm-9 hash">{{ sample.hash_sha1 }}</dd>
-
               <dt class="col-sm-3">SHA256</dt>
               <dd class="col-sm-9 hash">{{ sample.hash_sha256 }}</dd>
             </dl>
@@ -78,47 +77,181 @@
         <div class="card">
           <div class="card-header">Actions</div>
           <div class="card-body">
-            <a class="btn btn-primary w-100 mb-2" href="/uploads/{{ sample.file_name }}" role="button">Download
-              file</a>
+            <a class="btn btn-primary w-100 mb-2" href="/uploads/{{ sample.file_name }}" role="button">Download file</a>
             <a class="btn btn-outline-danger w-100" href="#" role="button">Submit to sandbox</a>
           </div>
         </div>
       </div>
 
+      <!-- Static Analysis Tab -->
       <div class="tab-pane fade" id="static" role="tabpanel" aria-labelledby="static-tab">
         <div class="card mb-3">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <span>
-              <span id="static-status-icon"></span>
-              Static Analysis
-            </span>
+            <span><span id="static-status-icon"></span> Static Analysis</span>
           </div>
-
-          <div class="progress">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" id="static-progress-bar"
-              role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" style="width: 75%"></div>
-          </div>
-
           <div class="card-body">
-            <p class="mb-0">No static analysis results available yet.</p>
+            {% if static_analysis %}
+            <!-- Risk Badge and Scores -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <p class="mb-2"><strong>Risk Level:</strong></p>
+                {% if 'risk_level' in static_analysis %}
+                <span class="badge bg-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">{{
+                  static_analysis['risk_level'] }}</span>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <p class="mb-2"><strong>State Score:</strong></p>
+                <div class="progress" style="height: 25px;">
+                  <div class="progress-bar" role="progressbar"
+                    style="width: {% if static_analysis and 'state_score' in static_analysis %}{{ static_analysis['state_score'] }}{% else %}0{% endif %}%"
+                    aria-valuenow="{% if static_analysis and 'state_score' in static_analysis %}{{ static_analysis['state_score'] }}{% else %}0{% endif %}"
+                    aria-valuemin="0" aria-valuemax="100">
+                    {% if static_analysis and 'state_score' in static_analysis %}{{ static_analysis['state_score'] }}%{%
+                    endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Score Summary with Charts -->
+            {% if 'state_score' in static_analysis or 'etw_score' in static_analysis or 'combined_score' in
+            static_analysis %}
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <h6>Score Breakdown</h6>
+                    <canvas id="scoresChart"></canvas>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="alert alert-info" role="alert">
+                  <strong>Analysis Scores:</strong>
+                  {% if 'state_score' in static_analysis %}
+                  <div class="mt-2"><span class="badge bg-primary me-2">State: {{ static_analysis['state_score']
+                      }}</span></div>
+                  {% endif %}
+                  {% if 'etw_score' in static_analysis %}
+                  <div class="mt-1"><span class="badge bg-primary me-2">ETW: {{ static_analysis['etw_score'] }}</span>
+                  </div>
+                  {% endif %}
+                  {% if 'combined_score' in static_analysis %}
+                  <div class="mt-1"><span class="badge bg-warning">Combined: {{ static_analysis['combined_score']
+                      }}</span></div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Raw JSON Viewer -->
+            <div class="mt-4">
+              <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                data-bs-target="#rawStaticJson" aria-expanded="false" aria-controls="rawStaticJson">
+                View Complete Raw JSON
+              </button>
+              <div class="collapse mt-2" id="rawStaticJson">
+                <div class="card card-body bg-light">
+                  <pre class="mb-0"
+                    style="max-height: 500px; overflow-y: auto; background: #f8f9fa; padding: 15px; border-radius: 4px; font-size: 0.85rem;">{{ static_analysis | tojson(indent=2) }}</pre>
+                </div>
+              </div>
+            </div>
+
+            {% else %}
+            <div class="alert alert-warning" role="alert">
+              <p class="mb-0">No static analysis results available yet.</p>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
 
+      <!-- Dynamic Analysis Tab -->
       <div class="tab-pane fade" id="dynamic" role="tabpanel" aria-labelledby="dynamic-tab">
         <div class="card mb-3">
-          <div class="card-header">
-            <span>
-              <span id="dynamic-status-icon"></span>
-              Dynamic Analysis
-            </span>
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><span id="dynamic-status-icon"></span> Dynamic Analysis</span>
           </div>
           <div class="card-body">
-            <p class="mb-0">No dynamic analysis results available yet.</p>
+            {% if dynamic_analysis %}
+            <!-- Summary Stats with Charts -->
+            {% if 'processes' in dynamic_analysis or 'api_calls' in dynamic_analysis or 'network' in dynamic_analysis %}
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <h6>Activity Distribution</h6>
+                    <canvas id="activityChart"></canvas>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="row">
+                  {% if 'processes' in dynamic_analysis %}
+                  <div class="col-6 mb-3">
+                    <div class="card text-center">
+                      <div class="card-body">
+                        <h5 class="card-title">{% if dynamic_analysis['processes'] is iterable %}{{
+                          dynamic_analysis['processes']|length }}{% else %}0{% endif %}</h5>
+                        <p class="card-text mb-0">Processes</p>
+                      </div>
+                    </div>
+                  </div>
+                  {% endif %}
+                  {% if 'api_calls' in dynamic_analysis %}
+                  <div class="col-6 mb-3">
+                    <div class="card text-center">
+                      <div class="card-body">
+                        <h5 class="card-title">{% if dynamic_analysis['api_calls'] is iterable %}{{
+                          dynamic_analysis['api_calls']|length }}{% else %}0{% endif %}</h5>
+                        <p class="card-text mb-0">API Calls</p>
+                      </div>
+                    </div>
+                  </div>
+                  {% endif %}
+                  {% if 'network' in dynamic_analysis %}
+                  <div class="col-6 mb-3">
+                    <div class="card text-center">
+                      <div class="card-body">
+                        <h5 class="card-title">{% if dynamic_analysis['network'] is iterable %}{{
+                          dynamic_analysis['network']|length }}{% else %}0{% endif %}</h5>
+                        <p class="card-text mb-0">Network Events</p>
+                      </div>
+                    </div>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Raw JSON Viewer -->
+            <div class="mt-4">
+              <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                data-bs-target="#rawDynamicJson" aria-expanded="false" aria-controls="rawDynamicJson">
+                View Complete Raw JSON
+              </button>
+              <div class="collapse mt-2" id="rawDynamicJson">
+                <div class="card card-body bg-light">
+                  <pre class="mb-0"
+                    style="max-height: 500px; overflow-y: auto; background: #f8f9fa; padding: 15px; border-radius: 4px; font-size: 0.85rem;">{{ dynamic_analysis | tojson(indent=2) }}</pre>
+                </div>
+              </div>
+            </div>
+
+            {% else %}
+            <div class="alert alert-warning" role="alert">
+              <p class="mb-0">No dynamic analysis results available yet.</p>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
 
+      <!-- Other Analysis Tabs -->
       <div class="tab-pane fade" id="behavioral" role="tabpanel" aria-labelledby="behavioral-tab">
         <div class="card mb-3">
           <div class="card-header">Behavioral Analysis</div>
@@ -162,7 +295,6 @@
             <p class="mb-0">Reporting artifacts, export options and documentation links.</p>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -170,55 +302,100 @@
 
 <script>
   function analysisIconState(analysis, state) {
-
-    icon = null;
-
+    let icon = null;
     if (analysis === 'static') {
       icon = document.getElementById('static-status-icon');
-    }
-    else if (analysis === 'dynamic') {
+    } else if (analysis === 'dynamic') {
       icon = document.getElementById('dynamic-status-icon');
     }
+    if (!icon) return;
 
-    // Reset everything first
-    icon.className = '';       // remove all classes
-    icon.style = '';           // remove inline styles
-    icon.innerHTML = '';       // remove inner content
+    icon.className = '';
+    icon.style = '';
+    icon.innerHTML = '';
 
     if (state === 'running') {
-      // Add Bootstrap spinner classes
       icon.classList.add('spinner-border', 'spinner-border-sm', 'text-primary');
-    }
-    else if (state === 'failed') {
-      // Red X
+    } else if (state === 'failed') {
       icon.style.color = 'red';
       icon.style.fontWeight = 'bold';
-      icon.innerHTML = '&times;'; // ×
-    }
-    else if (state === 'complete') {
-      // Use a green check mark
+      icon.innerHTML = '&times;';
+    } else if (state === 'complete') {
       icon.style.color = 'green';
       icon.style.fontWeight = 'bold';
-      icon.innerHTML = '&#10004;'; // ✔ check mark
+      icon.innerHTML = '&#10004;';
     }
   }
 
   function updateProgressBar(progress) {
     const progressBar = document.getElementById('static-progress-bar');
-    progressBar.style.width = progress + '%';
-    progressBar.setAttribute('aria-valuenow', progress);
-    progressBar.textContent = progress + '%';
+    if (progressBar) {
+      progressBar.style.width = progress + '%';
+      progressBar.setAttribute('aria-valuenow', progress);
+      progressBar.textContent = progress + '%';
+    }
   }
 
-  const socket = io();
+  // ---------- PRE-RENDERED VALUES ----------
+  const stateScore = {{ static_analysis.state_score | default (0) }};
+  const etwScore = {{ static_analysis.etw_score | default (0) }};
+  const combinedScore = {{ static_analysis.combined_score | default (0) }};
 
-  socket.on("analysis_state", function (data) {
-    console.log("Received analysis_state:", data);
-    analysisIconState(data.type, data.state);
-    if (data.type === "static") {
-      updateProgressBar(data.progress);
-    }
-  });
+  const processCnt = {{ dynamic_analysis.processes | default ([]) | length }};
+  const apiCnt = {{ dynamic_analysis.api_calls | default ([]) | length }};
+  const netCnt = {{ dynamic_analysis.network | default ([]) | length }};
 
+  // ---------- STATIC ANALYSIS CHART ----------
+  const scoresCtx = document.getElementById('scoresChart');
+  if (scoresCtx) {
+    new Chart(scoresCtx, {
+      type: 'bar',
+      data: {
+        labels: ['State Score', 'ETW Score', 'Combined Score'],
+        datasets: [{
+          data: [stateScore, etwScore, combinedScore],
+          backgroundColor: ['#0d6efd', '#0d6efd', '#ffc107'],
+          borderColor: ['#0d6efd', '#0d6efd', '#ffc107'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 300
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+
+  // ---------- DYNAMIC ANALYSIS CHART ----------
+  const activityCtx = document.getElementById('activityChart');
+  if (activityCtx) {
+    new Chart(activityCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Processes', 'API Calls', 'Network Events'],
+        datasets: [{
+          data: [processCnt, apiCnt, netCnt],
+          backgroundColor: ['#0dcaf0', '#0d6efd', '#198754'],
+          borderColor: ['#fff', '#fff', '#fff'],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
 </script>
+
 {% endblock %}

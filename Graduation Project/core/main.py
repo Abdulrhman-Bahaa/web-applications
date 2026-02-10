@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 import aiohttp
 import socketio
 import uvicorn
@@ -79,10 +80,18 @@ async def sample_fetcher():
                     continue
 
                 if current_sample is None:
+                    # print current time for debugging
+                    print(datetime.now().strftime("%H:%M:%S") +
+                          " - Fetching unanalyzed sample...")
+
                     async with session.get(GET_UNANALIZED_SAMPLE_URL) as response:
                         if response.status == 404:
+                            print(datetime.now().strftime("%H:%M:%S") +
+                                  " - No unanalyzed samples available")
                             pass
                         elif response.status == 200:
+                            print(datetime.now().strftime("%H:%M:%S") +
+                                  " - Unanalyzed sample fetched !!!")
                             current_sample = await response.json()
                             await sio.emit(
                                 "file_sha256",
