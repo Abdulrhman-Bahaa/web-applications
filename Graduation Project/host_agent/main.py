@@ -52,7 +52,7 @@ services = build_services()
 
 
 DATA_ACCESS_URL = f"{services.DATA_ACCESS}{Endpoints.SAMPLES}"
-VM_AGENT_URL = f"{services.VM_AGENT}{Endpoints.VM_UPLOAD}"
+VM_AGENT_URL = f"{services.VM_AGENT}"
 
 
 sio = socketio.Client()
@@ -67,14 +67,38 @@ def connect():
 def file_sha256(data):
     print(f"\n{data}\n")
 
-    # Stream file from Data Access Service and upload to VM Agent
-    with requests.get(DATA_ACCESS_URL + data, params={"download": 1}, stream=True) as r:
-        r.raise_for_status()  # check for errors
-        files = {"file": (f"{data}.zip", r.raw)}  # r.raw is a file-like object
-        response = requests.post(VM_AGENT_URL, files=files)
+    with requests.get(
+        DATA_ACCESS_URL + data,
+        params={"download": 1},
+        stream=True,
+        timeout=60,
+    ) as r:
+        r.raise_for_status()
 
-        sio.emit("file_processed", {
-                 "filename": data, "status": response.status_code})
+        def stream():
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    yield chunk
+
+        headers = {
+            "Content-Type": "application/zip",
+            "X-Filename": f"{data}.zip",
+        }
+
+        response = requests.post(
+            f"{services.VM_AGENT}{Endpoints.VM_UPLOAD}",
+            data=stream(),
+            headers=headers,
+            timeout=300,
+        )
+
+    sio.emit(
+        "file_processed",
+        {
+            "filename": data,
+            "status": response.status_code,
+        },
+    )
 
 
 @sio.event

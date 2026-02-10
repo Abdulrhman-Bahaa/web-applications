@@ -1,10 +1,12 @@
 import argparse
+from http.client import HTTPException
 import subprocess
 import os
 from multiprocessing import Process
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Header, Request
 import uvicorn
 from dataclasses import dataclass
+import aiofiles
 
 app = FastAPI()
 
@@ -58,17 +60,24 @@ async def shutdown():
     return {"message": "Server shutting down..."}
 
 
-@app.post('/upload')
-async def upload(file: UploadFile = File(...)):
-    from werkzeug.utils import secure_filename
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
+@app.post("/upload")
+async def upload_file(
+    request: Request,
+    x_filename: str = Header(None),
+):
+    if not x_filename:
+        raise HTTPException(status_code=400, detail="Missing X-Filename header")
 
-    with open(filepath, 'wb') as f:
-        f.write(await file.read())
-    print(f"Received file: {file.filename}")
+    file_path = os.path.join(UPLOAD_FOLDER, x_filename)
 
-    return {"message": "File uploaded successfully"}
+    async with aiofiles.open(file_path, "wb") as f:
+        async for chunk in request.stream():
+            await f.write(chunk)
+
+    return {
+        "status": "ok",
+        "filename": x_filename,
+    }
 
 # Run GUI
 if __name__ == "__main__":
