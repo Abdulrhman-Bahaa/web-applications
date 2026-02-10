@@ -123,24 +123,31 @@ def settings():
 
 @app.route("/history")
 def history():
-    samples = Sample.query.order_by(Sample.id.desc()).limit(50).all()
+
+    response = requests.get(SAMPLES_API_URL)
+    response.raise_for_status()
+
+    samples = [SampleSchema.model_validate(item) for item in response.json()]
+
     return render_template('history.html', samples=samples)
 
 
 @app.route('/search', methods=['POST'])
 def search():
-    search_query = ''
-    # Get the value from the form input
-    search_query = request.form.get('search', '')
 
-    samples = Sample.query.filter(
-        (Sample.file_name.ilike(f"%{search_query}%")) |
-        (Sample.hash_md5 == search_query) |
-        (Sample.hash_sha1 == search_query) |
-        (Sample.hash_sha256 == search_query)
-    ).order_by(Sample.id.desc()).limit(50).all()
+    identifier = request.form.get("search")
 
-    return render_template('history.html', samples=samples, search_query=search_query)
+    response = requests.get(f"{SAMPLES_API_URL}{identifier}")
+    if response.status_code == 200:
+        try:
+            sample = SampleSchema.model_validate(response.json())
+        except Exception as e:
+            print(f"Sample validation error: {e}")
+            sample = None
+    else:
+        sample = None
+
+    return render_template('history.html', samples=[sample] if sample else [], search_query=identifier)
 
 
 if __name__ == '__main__':
