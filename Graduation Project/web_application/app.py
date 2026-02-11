@@ -41,7 +41,24 @@ def home():
 
     samples = [SampleSchema.model_validate(item) for item in response.json()]
 
-    return render_template('index.html', samples=samples)
+    # Calculate insights
+    last_upload = None
+    if samples:
+        samples_sorted = sorted(
+            samples, key=lambda x: x.upload_date, reverse=True)
+        last_upload = samples_sorted[0].upload_date.strftime('%Y-%m-%d %H:%M')
+
+    # Group samples by date for upload timeline
+    from collections import defaultdict
+    upload_by_date = defaultdict(int)
+    for sample in samples:
+        date_str = sample.upload_date.strftime('%Y-%m-%d')
+        upload_by_date[date_str] += 1
+
+    # Sort by date
+    upload_timeline = sorted(upload_by_date.items())
+
+    return render_template('index.html', samples=samples, last_upload=last_upload, upload_timeline=upload_timeline)
 
 
 @app.route('/upload', methods=['POST'])

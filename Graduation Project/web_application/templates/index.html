@@ -4,6 +4,7 @@
 
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -45,7 +46,7 @@
         <div class="card h-100">
             <div class="card-body text-center">
                 <h6 class="card-subtitle mb-2 text-muted">Latest Activity</h6>
-                <h4 class="card-title">-</h4>
+                <h4 class="card-title">{{ last_upload or '-' }}</h4>
                 <small class="text-muted">Last upload</small>
             </div>
         </div>
@@ -63,6 +64,12 @@
 
 <div class="row">
     <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header">Upload Timeline</div>
+            <div class="card-body">
+                <canvas id="uploadChart" height="80"></canvas>
+            </div>
+        </div>
         <div class="card mb-3">
             <div class="card-header">Recent Samples</div>
             <div class="card-body">
@@ -111,4 +118,49 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Upload timeline chart
+    const uploadTimeline = {{ upload_timeline| tojson }};
+    const labels = uploadTimeline.map(item => item[0]);
+    const data = uploadTimeline.map(item => item[1]);
+
+    const ctx = document.getElementById('uploadChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Samples Uploaded',
+                data: data,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 5,
+                pointBackgroundColor: '#0d6efd',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+</script>
 {% endblock %}
