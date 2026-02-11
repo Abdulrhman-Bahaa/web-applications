@@ -93,25 +93,7 @@
             {% if static_analysis %}
             <!-- Risk Badge and Scores -->
             <div class="row mb-4">
-              <div class="col-md-6">
-                <p class="mb-2"><strong>Risk Level:</strong></p>
-                {% if 'risk_level' in static_analysis %}
-                <span class="badge bg-danger" style="font-size: 1rem; padding: 0.5rem 1rem;">{{
-                  static_analysis['risk_level'] }}</span>
-                {% endif %}
-              </div>
-              <div class="col-md-6">
-                <p class="mb-2"><strong>State Score:</strong></p>
-                <div class="progress" style="height: 25px;">
-                  <div class="progress-bar" role="progressbar"
-                    style="width: {% if static_analysis and 'state_score' in static_analysis %}{{ static_analysis['state_score'] }}{% else %}0{% endif %}%"
-                    aria-valuenow="{% if static_analysis and 'state_score' in static_analysis %}{{ static_analysis['state_score'] }}{% else %}0{% endif %}"
-                    aria-valuemin="0" aria-valuemax="100">
-                    {% if static_analysis and 'state_score' in static_analysis %}{{ static_analysis['state_score'] }}%{%
-                    endif %}
-                  </div>
-                </div>
-              </div>
+
             </div>
 
             <!-- Score Summary with Charts -->
@@ -143,6 +125,178 @@
                   {% endif %}
                 </div>
               </div>
+            </div>
+            {% endif %}
+
+            <!-- PE Analysis Section -->
+            {% if 'pe_analysis' in static_analysis %}
+            <div class="mt-4 mb-4">
+              <h6 class="mb-3">PE File Analysis</h6>
+
+              <!-- PE Overview Cards -->
+              <div class="row mb-3">
+                <div class="col-md-3">
+                  <div class="card">
+                    <div class="card-body text-center">
+                      <p class="card-text mb-1"><small>Entropy</small></p>
+                      <h5 class="card-title">{% if 'entropy' in static_analysis['pe_analysis'] %}{{
+                        static_analysis['pe_analysis']['entropy'] }}{% else %}N/A{% endif %}</h5>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card">
+                    <div class="card-body text-center">
+                      <p class="card-text mb-1"><small>Is PE</small></p>
+                      <h5 class="card-title">
+                        {% if 'is_pe' in static_analysis['pe_analysis'] %}
+                        {% if static_analysis['pe_analysis']['is_pe'] %}
+                        <span class="badge bg-success">YES</span>
+                        {% else %}
+                        <span class="badge bg-danger">NO</span>
+                        {% endif %}
+                        {% else %}N/A{% endif %}
+                      </h5>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card">
+                    <div class="card-body text-center">
+                      <p class="card-text mb-1"><small>Packed</small></p>
+                      <h5 class="card-title">
+                        {% if 'packed' in static_analysis['pe_analysis'] %}
+                        {% if static_analysis['pe_analysis']['packed'] %}
+                        <span class="badge bg-warning">YES</span>
+                        {% else %}
+                        <span class="badge bg-success">NO</span>
+                        {% endif %}
+                        {% else %}N/A{% endif %}
+                      </h5>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card">
+                    <div class="card-body text-center">
+                      <p class="card-text mb-1"><small>Overlay</small></p>
+                      <h5 class="card-title">
+                        {% if 'overlay' in static_analysis['pe_analysis'] %}
+                        {% if static_analysis['pe_analysis']['overlay'] %}
+                        <span class="badge bg-warning">YES</span>
+                        {% else %}
+                        <span class="badge bg-success">NO</span>
+                        {% endif %}
+                        {% else %}N/A{% endif %}
+                      </h5>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Imports Section -->
+              {% if 'imports' in static_analysis['pe_analysis'] and static_analysis['pe_analysis']['imports']|length > 0
+              %}
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <div class="card">
+                    <div class="card-header">
+                      <h6 class="mb-0">Imports ({{ static_analysis['pe_analysis']['imports']|length }})</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                          <tbody>
+                            {% for imp in static_analysis['pe_analysis']['imports'] %}
+                            <tr>
+                              <td><code>{{ imp }}</code></td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Sections Table -->
+              {% if 'sections' in static_analysis['pe_analysis'] and static_analysis['pe_analysis']['sections']|length >
+              0 %}
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <div class="card">
+                    <div class="card-header">
+                      <h6 class="mb-0">PE Sections ({{ static_analysis['pe_analysis']['sections']|length }})</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                          <thead class="table-light">
+                            <tr>
+                              <th>Section Name</th>
+                              <th>Size (bytes)</th>
+                              <th>Entropy</th>
+                              <th>Risk</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for section in static_analysis['pe_analysis']['sections'] %}
+                            <tr>
+                              <td><code>{{ section.name }}</code></td>
+                              <td>{{ section.size }}</td>
+                              <td>{{ section.entropy }}</td>
+                              <td>
+                                {% if section.entropy > 7 %}
+                                <span class="badge bg-danger">High</span>
+                                {% elif section.entropy > 4 %}
+                                <span class="badge bg-warning">Medium</span>
+                                {% else %}
+                                <span class="badge bg-success">Low</span>
+                                {% endif %}
+                              </td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Suspicious APIs -->
+              {% if 'suspicious_apis' in static_analysis['pe_analysis'] %}
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <div class="card">
+                    <div class="card-header">
+                      <h6 class="mb-0">Suspicious APIs ({{ static_analysis['pe_analysis']['suspicious_apis']|length }})
+                      </h6>
+                    </div>
+                    <div class="card-body">
+                      {% if static_analysis['pe_analysis']['suspicious_apis']|length > 0 %}
+                      <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                          <tbody>
+                            {% for api in static_analysis['pe_analysis']['suspicious_apis'] %}
+                            <tr>
+                              <td><span class="badge bg-danger">{{ api }}</span></td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                      {% else %}
+                      <p class="text-muted mb-0">No suspicious APIs detected.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endif %}
             </div>
             {% endif %}
 
