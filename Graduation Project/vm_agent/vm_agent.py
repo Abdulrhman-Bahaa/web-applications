@@ -228,3 +228,4 @@ def get_json_file(filename: str):
 if __name__ == "__main__":
     print(f"VM Agent server running on port {PORT}")
     uvicorn.run(app, host=HOST, port=PORT)
+
