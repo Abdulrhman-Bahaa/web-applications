@@ -152,11 +152,6 @@ def submit():
     return redirect(url_for('home'))
 
 
-@app.route("/settings")
-def settings():
-    return render_template('settings.html')
-
-
 @app.route("/history")
 def history():
 
