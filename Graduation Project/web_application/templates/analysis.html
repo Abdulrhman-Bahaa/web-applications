@@ -31,14 +31,6 @@
             aria-selected="false">Static Analysis</a>
           <a class="nav-link" id="dynamic-tab" data-bs-toggle="pill" href="#dynamic" role="tab" aria-controls="dynamic"
             aria-selected="false">Dynamic Analysis</a>
-          <a class="nav-link" id="behavioral-tab" data-bs-toggle="pill" href="#behavioral" role="tab"
-            aria-controls="behavioral" aria-selected="false">Behavioral Analysis</a>
-          <a class="nav-link" id="memory-tab" data-bs-toggle="pill" href="#memory" role="tab" aria-controls="memory"
-            aria-selected="false">Memory Analysis</a>
-          <a class="nav-link" id="reverse-tab" data-bs-toggle="pill" href="#reverse" role="tab" aria-controls="reverse"
-            aria-selected="false">Reverse Engineering</a>
-          <a class="nav-link" id="indicator-tab" data-bs-toggle="pill" href="#indicator" role="tab"
-            aria-controls="indicator" aria-selected="false">Indicator Extraction</a>
           <a class="nav-link" id="reporting-tab" data-bs-toggle="pill" href="#reporting" role="tab"
             aria-controls="reporting" aria-selected="false">Reporting &amp; Documentation</a>
         </div>
@@ -71,14 +63,6 @@
               <li><strong>Type:</strong> {{ sample.file_type or 'unknown' }}</li>
               <li><strong>Stored as:</strong> {{ sample.file_name }}</li>
             </ul>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">Actions</div>
-          <div class="card-body">
-            <a class="btn btn-primary w-100 mb-2" href="/uploads/{{ sample.file_name }}" role="button">Download file</a>
-            <a class="btn btn-outline-danger w-100" href="#" role="button">Submit to sandbox</a>
           </div>
         </div>
       </div>
@@ -401,43 +385,6 @@
               <p class="mb-0">No dynamic analysis results available yet.</p>
             </div>
             {% endif %}
-          </div>
-        </div>
-      </div>
-
-      <!-- Other Analysis Tabs -->
-      <div class="tab-pane fade" id="behavioral" role="tabpanel" aria-labelledby="behavioral-tab">
-        <div class="card mb-3">
-          <div class="card-header">Behavioral Analysis</div>
-          <div class="card-body">
-            <p class="mb-0">Behavioral telemetry and high-level behavior summary will appear here.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="tab-pane fade" id="memory" role="tabpanel" aria-labelledby="memory-tab">
-        <div class="card mb-3">
-          <div class="card-header">Memory Analysis</div>
-          <div class="card-body">
-            <p class="mb-0">Memory dumps, stacks, and related artifacts will appear here.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="tab-pane fade" id="reverse" role="tabpanel" aria-labelledby="reverse-tab">
-        <div class="card mb-3">
-          <div class="card-header">Reverse Engineering</div>
-          <div class="card-body">
-            <p class="mb-0">Disassembly, function listings, and notes go here.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="tab-pane fade" id="indicator" role="tabpanel" aria-labelledby="indicator-tab">
-        <div class="card mb-3">
-          <div class="card-header">Indicator Extraction</div>
-          <div class="card-body">
-            <p class="mb-0">Extracted IOCs (domains, IPs, hashes, mutexes, etc.) will appear here.</p>
           </div>
         </div>
       </div>

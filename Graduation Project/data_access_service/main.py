@@ -205,21 +205,25 @@ async def update_core(request: ClientsRequest):
     """
     Delete 'core', add provided clients to the set, and set expiration to 10 seconds.
     """
-    if not request.clients:
-        raise HTTPException(
-            status_code=400, detail="Clients list cannot be empty")
+    # if not request.clients:
+    #     raise HTTPException(
+    #         status_code=400, detail="Clients list cannot be empty")
 
     try:
         # Use pipeline for atomic execution
         pipe = r.pipeline()
         pipe.delete("core")
-        pipe.sadd("core", *request.clients)
+
+        if request.clients:
+            pipe.sadd("core", *request.clients)
+        else:
+            pipe.sadd("core", "")  # Add empty string if no clients provided
+
         pipe.expire("core", 6)
         pipe.execute()
 
         return {
             "status": "success",
-            "clients_added": request.clients
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

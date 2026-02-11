@@ -113,7 +113,13 @@ async def heartbeat():
         data = {
             "clients": list(connected_clients)
         }
-        response = requests.post(DATA_ACCESS_URL + "update_core/", json=data)
+
+        try:
+            response = requests.post(
+                DATA_ACCESS_URL + "update_core/", json=data)
+            print(f"Heartbeat sent")
+        except requests.RequestException as e:
+            print(f"Error sending heartbeat: {e}")
 
         await asyncio.sleep(5)
 
@@ -122,6 +128,8 @@ if __name__ == "__main__":
     async def main():
         # Start the heartbeat as a background task
         asyncio.create_task(heartbeat())
+
+        print("Starting Socket.IO server on port 5002...")
 
         # Start the Socket.IO ASGI app with Uvicorn
         config = uvicorn.Config(app, host="0.0.0.0",

@@ -67,7 +67,13 @@ def home():
         if core_response.status_code == 200:
             core_data = core_response.json()
             if core_data.get('status') != 'failed':
-                connected_clients = len(core_data.get('clients', []))
+
+                print(core_data.get("clients"))
+                if core_data.get("clients")[0] == '':
+                    connected_clients = 0
+                    print("Core clients field is empty string, treating as 0")
+                else:
+                    connected_clients = len(core_data.get('clients', []))
                 core_running = True
             else:
                 core_running = False
