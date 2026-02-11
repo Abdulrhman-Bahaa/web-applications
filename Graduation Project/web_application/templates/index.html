@@ -55,8 +55,13 @@
         <div class="card h-100">
             <div class="card-body text-center">
                 <h6 class="card-subtitle mb-2 text-muted">System Status</h6>
+                {% if core_running %}
                 <h4 class="card-title"><span class="badge bg-success">Online</span></h4>
-                <small class="text-muted">Operational</small>
+                <small class="text-muted">{{ connected_clients }} client(s) connected</small>
+                {% else %}
+                <h4 class="card-title"><span class="badge bg-danger">Offline</span></h4>
+                <small class="text-muted">Core not running</small>
+                {% endif %}
             </div>
         </div>
     </div>

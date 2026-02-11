@@ -10,6 +10,7 @@ from models import Sample
 import os
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+import redis
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)  # Make folder if it doesn't exist
@@ -18,6 +19,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)  # Make folder if it doesn't exist
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+# Connect to Redis
+r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 
 # Pydantic model for analysis status update
@@ -191,6 +194,56 @@ def get_file_as_text(filename: str):
     with open(file_path, "r") as f:
         content = f.read()
     return {"filename": filename, "content": content}
+
+
+class ClientsRequest(BaseModel):
+    clients: list[str]  # List of client strings
+
+
+@app.post("/update_core/")
+async def update_core(request: ClientsRequest):
+    """
+    Delete 'core', add provided clients to the set, and set expiration to 10 seconds.
+    """
+    if not request.clients:
+        raise HTTPException(
+            status_code=400, detail="Clients list cannot be empty")
+
+    try:
+        # Use pipeline for atomic execution
+        pipe = r.pipeline()
+        pipe.delete("core")
+        pipe.sadd("core", *request.clients)
+        pipe.expire("core", 6)
+        pipe.execute()
+
+        return {
+            "status": "success",
+            "clients_added": request.clients
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/core")
+def get_core_clients():
+    """
+    Retrieve all clients in the 'core' set.
+    """
+    try:
+        if not r.exists("core"):
+            return {
+                "status": "failed",
+                "clients": []
+            }
+        clients = r.smembers("core")
+        # If the core set doesn't exist, raise a 404 error
+        return {
+            "status": "success",
+            "clients": list(clients)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == '__main__':

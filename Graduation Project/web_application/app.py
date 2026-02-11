@@ -58,7 +58,26 @@ def home():
     # Sort by date
     upload_timeline = sorted(upload_by_date.items())
 
-    return render_template('index.html', samples=samples, last_upload=last_upload, upload_timeline=upload_timeline)
+    # Fetch connected clients from data access service
+    connected_clients = 0
+    core_running = False
+    try:
+        core_response = requests.get(
+            f'{DATA_ACCESS_SERVICE_URL}/core', timeout=5)
+        if core_response.status_code == 200:
+            core_data = core_response.json()
+            if core_data.get('status') != 'failed':
+                connected_clients = len(core_data.get('clients', []))
+                core_running = True
+            else:
+                core_running = False
+        else:
+            core_running = False
+    except Exception as e:
+        print(f"Core clients fetch error: {e}")
+        core_running = False
+
+    return render_template('index.html', samples=samples, last_upload=last_upload, upload_timeline=upload_timeline, connected_clients=connected_clients, core_running=core_running)
 
 
 @app.route('/upload', methods=['POST'])

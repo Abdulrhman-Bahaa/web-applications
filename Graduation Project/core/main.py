@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 import aiohttp
+import requests
 import socketio
 import uvicorn
 
@@ -9,7 +10,7 @@ sio = socketio.AsyncServer(async_mode="asgi")
 app = socketio.ASGIApp(sio)
 
 # Data Access URLs
-DATA_ACCESS_URL = "http://localhost:5001/samples/"
+DATA_ACCESS_URL = "http://localhost:5001/"
 GET_UNANALIZED_SAMPLE_URL = "http://localhost:5001/samples/unanalyzed/first"
 
 # Global state
@@ -53,7 +54,8 @@ async def file_processed(sid, data):
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
-            DATA_ACCESS_URL + current_sample["hash_sha256"] + "/analysis",
+            DATA_ACCESS_URL + "samples/" +
+                current_sample["hash_sha256"] + "/analysis",
             json=payload
         ) as response:
 
@@ -105,5 +107,27 @@ async def sample_fetcher():
         raise
 
 
+# Hearbeat task
+async def heartbeat():
+    while True:
+        data = {
+            "clients": list(connected_clients)
+        }
+        response = requests.post(DATA_ACCESS_URL + "update_core/", json=data)
+
+        await asyncio.sleep(5)
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5002)
+    async def main():
+        # Start the heartbeat as a background task
+        asyncio.create_task(heartbeat())
+
+        # Start the Socket.IO ASGI app with Uvicorn
+        config = uvicorn.Config(app, host="0.0.0.0",
+                                port=5002, log_level="info")
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    # Run the async main function
+    asyncio.run(main())
