@@ -22,6 +22,45 @@
     </div>
 </div>
 
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Total Samples</h6>
+                <h4 class="card-title">{{ samples|length if samples else 0 }}</h4>
+                <small class="text-muted">Uploaded</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Analysis Ready</h6>
+                <h4 class="card-title">{{ samples|length if samples else 0 }}</h4>
+                <small class="text-muted">Available</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">Latest Activity</h6>
+                <h4 class="card-title">-</h4>
+                <small class="text-muted">Last upload</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h6 class="card-subtitle mb-2 text-muted">System Status</h6>
+                <h4 class="card-title"><span class="badge bg-success">Online</span></h4>
+                <small class="text-muted">Operational</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-lg-8">
         <div class="card mb-3">
