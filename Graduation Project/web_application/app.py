@@ -1,18 +1,16 @@
 from dataclasses import Field
 import datetime
 import os
-import json as pyjson
-from urllib import response
 import requests
 from flask import Flask, json, request, render_template, redirect, url_for
 from werkzeug.utils import secure_filename
-from flask_socketio import SocketIO
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 
-
+load_dotenv()
 app = Flask(__name__)
 
-DATA_ACCESS_SERVICE_URL = 'http://localhost:5001'
+DATA_ACCESS_SERVICE_URL = f"http://{os.getenv('DATA_ACCESS_SERVICE_IP')}:{os.getenv('DATA_ACCESS_SERVICE_PORT')}"
 SAMPLES_API_URL = f'{DATA_ACCESS_SERVICE_URL}/samples/'
 SAMPLE_UPLOAD_API_URL = f'{DATA_ACCESS_SERVICE_URL}/samples/upload/'
 
@@ -68,10 +66,8 @@ def home():
             core_data = core_response.json()
             if core_data.get('status') != 'failed':
 
-                print(core_data.get("clients"))
                 if core_data.get("clients")[0] == '':
                     connected_clients = 0
-                    print("Core clients field is empty string, treating as 0")
                 else:
                     connected_clients = len(core_data.get('clients', []))
                 core_running = True
@@ -100,7 +96,6 @@ def upload():
 
 @app.route('/analysis/<int:sample_id>')
 def analysis(sample_id):
-    # sample = db.session.get(Sample, sample_id)
 
     response = requests.get(f'{SAMPLES_API_URL}{sample_id}')
     if response.status_code == 200:
