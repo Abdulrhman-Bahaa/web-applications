@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - MalwareScope{% endblock %}
+
+{% block styles %}
+<style>
+    .status-badge {
+        font-weight: bold;
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+    }
+
+    .status-online {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .status-offline {
+        background-color: #dc3545;
+        color: white;
+    }
+
+    .status-unknown {
+        background-color: #6c757d;
+        color: white;
+    }
+
+    .admin-header {
+        margin-bottom: 2rem;
+    }
+
+    .system-card {
+        border-left: 4px solid #ff5733;
+        margin-bottom: 1.5rem;
+    }
+
+    .system-card.online {
+        border-left-color: #28a745;
+    }
+
+    .system-card.offline {
+        border-left-color: #dc3545;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        font-weight: 500;
+        color: #6c757d;
+    }
+
+    .info-value {
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-box {
+        background: #1a1f26;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        text-align: center;
+        border: 1px solid #3a404a;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #ff5733;
+        margin: 0.5rem 0;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1 class="h3 mb-2">System Administration</h1>
+    <p class="text-muted">Monitor system health and status</p>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-box">
+        <div class="stat-label">Total Samples</div>
+        <div class="stat-number">{{ total_samples }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Connected Clients</div>
+        <div class="stat-number">{{ connected_clients }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">System Uptime</div>
+        <div class="stat-number">{{ uptime if uptime else 'N/A' }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Core Status</div>
+        <div class="stat-number" style="color: {% if core_running %}#28a745{% else %}#dc3545{% endif %}">
+            {% if core_running %}✓{% else %}✗{% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Data Access Service -->
+<div class="card system-card {% if data_access_running %}online{% else %}offline{% endif %}">
+    <div class="card-header" style="background-color: #1a1f26; border-bottom: 1px solid #3a404a; padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h5 class="mb-0">Data Access Service</h5>
+            <span class="status-badge {% if data_access_running %}status-online{% else %}status-offline{% endif %}">
+                {% if data_access_running %}ONLINE{% else %}OFFLINE{% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="info-row">
+            <span class="info-label">Service URL</span>
+            <span class="info-value">{{ data_access_url }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Response Time</span>
+            <span class="info-value">{{ data_access_response_time if data_access_response_time else 'N/A' }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Status</span>
+            <span class="info-value">{{ data_access_status if data_access_status else 'Unable to retrieve' }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Last Check</span>
+            <span class="info-value">{{ last_check_time }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Core Service -->
+<div class="card system-card {% if core_running %}online{% else %}offline{% endif %}">
+    <div class="card-header" style="background-color: #1a1f26; border-bottom: 1px solid #3a404a; padding: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h5 class="mb-0">Analysis Core</h5>
+            <span class="status-badge {% if core_running %}status-online{% else %}status-offline{% endif %}">
+                {% if core_running %}ONLINE{% else %}OFFLINE{% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="info-row">
+            <span class="info-label">Status</span>
+            <span class="info-value">{% if core_running %}Running{% else %}Not Running{% endif %}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Connected Clients</span>
+            <span class="info-value">{{ connected_clients }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Client List</span>
+            <span class="info-value">
+                {% if clients %}
+                    {% for client in clients %}
+                        {{ client }}{% if not loop.last %}<br>{% endif %}
+                    {% endfor %}
+                {% else %}
+                    No connected clients
+                {% endif %}
+            </span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Last Check</span>
+            <span class="info-value">{{ last_check_time }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Application Info -->
+<div class="card system-card">
+    <div class="card-header" style="background-color: #1a1f26; border-bottom: 1px solid #3a404a; padding: 1rem;">
+        <h5 class="mb-0">Application Information</h5>
+    </div>
+    <div class="card-body">
+        <div class="info-row">
+            <span class="info-label">Application Name</span>
+            <span class="info-value">MalwareScope</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Version</span>
+            <span class="info-value">1.0.0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Framework</span>
+            <span class="info-value">Flask</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Total Samples in Database</span>
+            <span class="info-value">{{ total_samples }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Last Activity</span>
+            <span class="info-value">{{ last_activity if last_activity else 'N/A' }}</span>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
