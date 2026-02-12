@@ -59,8 +59,9 @@
         color: #6c757d;
     }
 
+    /* Use a dark text color for light theme so URLs and values are readable */
     .info-value {
-        color: #ffffff;
+        color: #0b0d10;
         font-weight: 600;
     }
 
@@ -90,6 +91,91 @@
         font-size: 0.875rem;
         color: #6c757d;
         text-transform: uppercase;
+    }
+
+    /* Light theme overrides */
+    html[data-bs-theme="light"] .card {
+        background-color: #ffffff;
+        color: #0b0d10;
+        border-color: #e9ecef;
+    }
+
+    html[data-bs-theme="light"] .card .card-header {
+        background-color: #f8f9fa !important;
+        border-bottom-color: #e9ecef !important;
+        color: #0b0d10 !important;
+    }
+
+    html[data-bs-theme="light"] .card .card-body {
+        color: #0b0d10;
+    }
+
+    html[data-bs-theme="light"] .admin-header h1,
+    html[data-bs-theme="light"] .admin-header p {
+        color: #0b0d10;
+    }
+
+    html[data-bs-theme="light"] .stat-box {
+        background: #ffffff;
+        border: 1px solid #e9ecef;
+    }
+
+    html[data-bs-theme="light"] .stat-label {
+        color: #6c757d;
+    }
+
+    html[data-bs-theme="light"] .stat-number {
+        color: #ff5733;
+    }
+
+    /* Dark theme overrides */
+    html[data-bs-theme="dark"] .admin-header h1,
+    html[data-bs-theme="dark"] .admin-header p {
+        color: #ffffff;
+    }
+
+    html[data-bs-theme="dark"] .info-label {
+        color: #9aa4b2;
+    }
+
+    html[data-bs-theme="dark"] .info-value {
+        color: #ffffff;
+    }
+
+    html[data-bs-theme="dark"] .stat-box {
+        background: #0f1215;
+        border: 1px solid #2b3036;
+    }
+
+    html[data-bs-theme="dark"] .stat-label {
+        color: #9aa4b2;
+    }
+
+    html[data-bs-theme="dark"] .stat-number {
+        color: #ff8a5b;
+    }
+
+    html[data-bs-theme="dark"] .card {
+        background-color: #0f1215;
+        color: #ffffff;
+        border-color: #2b3036;
+    }
+
+    html[data-bs-theme="dark"] .card .card-header {
+        background-color: #0b0d10 !important;
+        border-bottom-color: #2b3036 !important;
+    }
+
+    html[data-bs-theme="dark"] .info-row {
+        border-bottom: 1px solid #2b3036;
+    }
+
+    html[data-bs-theme="dark"] .status-badge.status-online {
+        background-color: #198754;
+    }
+
+    html[data-bs-theme="dark"] .status-badge.status-offline {
+        background-color: #dc3545;
     }
 </style>
 {% endblock %}
