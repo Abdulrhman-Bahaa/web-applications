@@ -315,52 +315,126 @@
           </div>
           <div class="card-body">
             {% if dynamic_analysis %}
-            <!-- Summary Stats with Charts -->
-            {% if 'processes' in dynamic_analysis or 'api_calls' in dynamic_analysis or 'network' in dynamic_analysis %}
+            <!-- Risk Badge and Scores -->
+            <div class="row mb-4">
+              <div class="col-md-12">
+                {% if 'risk_level' in dynamic_analysis %}
+                <div class="mb-3">
+                  {% if dynamic_analysis['risk_level'] == 'HIGH' %}
+                  <span class="badge bg-danger fs-6">{{ dynamic_analysis['risk_level'] }}</span>
+                  {% elif dynamic_analysis['risk_level'] == 'MEDIUM' %}
+                  <span class="badge bg-warning text-dark fs-6">{{ dynamic_analysis['risk_level'] }}</span>
+                  {% elif dynamic_analysis['risk_level'] == 'LOW' %}
+                  <span class="badge bg-success fs-6">{{ dynamic_analysis['risk_level'] }}</span>
+                  {% else %}
+                  <span class="badge bg-secondary fs-6">{{ dynamic_analysis['risk_level'] }}</span>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Score Summary with Charts -->
+            {% if 'combined_score' in dynamic_analysis or 'state_score' in dynamic_analysis or 'etw_score' in dynamic_analysis %}
             <div class="row mb-4">
               <div class="col-md-6">
                 <div class="card bg-light">
                   <div class="card-body">
-                    <h6>Activity Distribution</h6>
-                    <canvas id="activityChart"></canvas>
+                    <h6>Score Breakdown</h6>
+                    <canvas id="dynamicScoresChart"></canvas>
                   </div>
                 </div>
               </div>
               <div class="col-md-6">
-                <div class="row">
-                  {% if 'processes' in dynamic_analysis %}
-                  <div class="col-6 mb-3">
-                    <div class="card text-center">
-                      <div class="card-body">
-                        <h5 class="card-title">{% if dynamic_analysis['processes'] is iterable %}{{
-                          dynamic_analysis['processes']|length }}{% else %}0{% endif %}</h5>
-                        <p class="card-text mb-0">Processes</p>
-                      </div>
+                <div class="alert alert-info" role="alert">
+                  <strong>Analysis Scores:</strong>
+                  {% if 'state_score' in dynamic_analysis %}
+                  <div class="mt-2"><span class="badge bg-primary me-2">State: {{ dynamic_analysis['state_score'] }}</span></div>
+                  {% endif %}
+                  {% if 'etw_score' in dynamic_analysis %}
+                  <div class="mt-1"><span class="badge bg-primary me-2">ETW: {{ dynamic_analysis['etw_score'] }}</span></div>
+                  {% endif %}
+                  {% if 'combined_score' in dynamic_analysis %}
+                  <div class="mt-1"><span class="badge bg-warning">Combined: {{ dynamic_analysis['combined_score'] }}</span></div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- State Findings Table -->
+            {% if 'state_findings' in dynamic_analysis and dynamic_analysis['state_findings']|length > 0 %}
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">State Findings ({{ dynamic_analysis['state_findings']|length }})</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="table-responsive">
+                      <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                          <tr>
+                            <th>Field</th>
+                            <th>Name</th>
+                            <th>Action</th>
+                            <th>Value</th>
+                            <th>Weight</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for finding in dynamic_analysis['state_findings'] %}
+                          <tr>
+                            <td><span class="badge bg-info">{{ finding.field }}</span></td>
+                            <td><code class="text-break" style="font-size: 0.85rem;">{{ finding.name }}</code></td>
+                            <td><span class="badge bg-secondary">{{ finding.action }}</span></td>
+                            <td><code class="text-break" style="font-size: 0.85rem;">{{ finding.value }}</code></td>
+                            <td><span class="badge bg-warning text-dark">{{ finding.weight }}</span></td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                  {% endif %}
-                  {% if 'api_calls' in dynamic_analysis %}
-                  <div class="col-6 mb-3">
-                    <div class="card text-center">
-                      <div class="card-body">
-                        <h5 class="card-title">{% if dynamic_analysis['api_calls'] is iterable %}{{
-                          dynamic_analysis['api_calls']|length }}{% else %}0{% endif %}</h5>
-                        <p class="card-text mb-0">API Calls</p>
-                      </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- ETW Findings Table -->
+            {% if 'etw_findings' in dynamic_analysis and dynamic_analysis['etw_findings']|length > 0 %}
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-header">
+                    <h6 class="mb-0">ETW Findings ({{ dynamic_analysis['etw_findings']|length }})</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="table-responsive">
+                      <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                          <tr>
+                            <th>Field</th>
+                            <th>Name</th>
+                            <th>Action</th>
+                            <th>Value</th>
+                            <th>Weight</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for finding in dynamic_analysis['etw_findings'] %}
+                          <tr>
+                            <td><span class="badge bg-info">{{ finding.field }}</span></td>
+                            <td><code class="text-break" style="font-size: 0.85rem;">{{ finding.name }}</code></td>
+                            <td><span class="badge bg-secondary">{{ finding.action }}</span></td>
+                            <td><code class="text-break" style="font-size: 0.85rem;">{{ finding.value }}</code></td>
+                            <td><span class="badge bg-warning text-dark">{{ finding.weight }}</span></td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                  {% endif %}
-                  {% if 'network' in dynamic_analysis %}
-                  <div class="col-6 mb-3">
-                    <div class="card text-center">
-                      <div class="card-body">
-                        <h5 class="card-title">{% if dynamic_analysis['network'] is iterable %}{{
-                          dynamic_analysis['network']|length }}{% else %}0{% endif %}</h5>
-                        <p class="card-text mb-0">Network Events</p>
-                      </div>
-                    </div>
-                  </div>
-                  {% endif %}
                 </div>
               </div>
             </div>
@@ -442,6 +516,10 @@
   const etwScore = {{ static_analysis.etw_score | default (0) }};
   const combinedScore = {{ static_analysis.combined_score | default (0) }};
 
+  const dynamicStateScore = {{ dynamic_analysis.state_score | default (0) }};
+  const dynamicEtwScore = {{ dynamic_analysis.etw_score | default (0) }};
+  const dynamicCombinedScore = {{ dynamic_analysis.combined_score | default (0) }};
+
   const processCnt = {{ dynamic_analysis.processes | default ([]) | length }};
   const apiCnt = {{ dynamic_analysis.api_calls | default ([]) | length }};
   const netCnt = {{ dynamic_analysis.network | default ([]) | length }};
@@ -455,6 +533,35 @@
         labels: ['State Score', 'ETW Score', 'Combined Score'],
         datasets: [{
           data: [stateScore, etwScore, combinedScore],
+          backgroundColor: ['#0d6efd', '#0d6efd', '#ffc107'],
+          borderColor: ['#0d6efd', '#0d6efd', '#ffc107'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 300
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+  }
+
+  // ---------- DYNAMIC ANALYSIS SCORES CHART ----------
+  const dynamicScoresCtx = document.getElementById('dynamicScoresChart');
+  if (dynamicScoresCtx) {
+    new Chart(dynamicScoresCtx, {
+      type: 'bar',
+      data: {
+        labels: ['State Score', 'ETW Score', 'Combined Score'],
+        datasets: [{
+          data: [dynamicStateScore, dynamicEtwScore, dynamicCombinedScore],
           backgroundColor: ['#0d6efd', '#0d6efd', '#ffc107'],
           borderColor: ['#0d6efd', '#0d6efd', '#ffc107'],
           borderWidth: 1
