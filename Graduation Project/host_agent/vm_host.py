@@ -1,3 +1,4 @@
+import os
 import argparse
 import requests
 import socketio
@@ -6,14 +7,41 @@ import time
 import io
 import json
 import hashlib
+from dotenv import load_dotenv # New Import
+from vm_manager import VM
+
+# Load variables from .env
+load_dotenv()
+
+# --- Multi-VM Initialization ---
+guest_user = os.getenv("GUEST_USER")
+guest_pass = os.getenv("GUEST_PASS")
+# Split the string by comma to get a list of paths
+vmx_paths_raw = os.getenv("VMX_PATHS", "")
+vmx_paths = [path.strip() for path in vmx_paths_raw.split(",") if path.strip()]
+
+# Create a list of VM objects
+vms = [VM(path, guest_user, guest_pass) for path in vmx_paths]
+
+print(f"[*] Initialized {len(vms)} Virtual Machines.")
+
+def run_on_all_vms(method_name, *args, **kwargs):
+    """Helper to run a VM method on all initialized virtual machines."""
+    for i, vm in enumerate(vms):
+        try:
+            method = getattr(vm, method_name)
+            print(f"[#] Executing {method_name} on VM {i+1}...")
+            method(*args, **kwargs)
+        except Exception as e:
+            print(f"[!] Failed on VM {i+1} ({vm.vmx_path}): {e}")
 
 
 @dataclass(frozen=True)
 class Services:
-    CORE: str = "http://45.243.251.70:5002"
-    DATA_ACCESS: str = "http://45.243.251.70:5001"
-    VM_AGENT: str = "http://192.168.40.128:5003"
-
+    # Pull from .env with fallbacks if needed
+    CORE: str = os.getenv("CORE_URL")
+    DATA_ACCESS: str = os.getenv("DATA_ACCESS_URL")
+    VM_AGENT: str = os.getenv("VM_AGENT_URL")
 
 @dataclass(frozen=True)
 class Endpoints:
@@ -22,17 +50,17 @@ class Endpoints:
     JSON: str = "/json/"
     REPORT: str = "/report/"
 
-
 def parse_args():
+    # We initialize temporary services to get defaults for help text
+    defaults = Services()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--core-url", default=services.CORE,
+    parser.add_argument("--core-url", default=defaults.CORE,
                         help="Core service URL")
     parser.add_argument(
-        "--data-access-url", default=services.DATA_ACCESS, help="Data access service URL")
+        "--data-access-url", default=defaults.DATA_ACCESS, help="Data access service URL")
     parser.add_argument(
-        "--vm-agent-url", default=services.VM_AGENT, help="VM agent service URL")
+        "--vm-agent-url", default=defaults.VM_AGENT, help="VM agent service URL")
     return parser.parse_args()
-
 
 def build_services():
     args = parse_args()
@@ -42,29 +70,26 @@ def build_services():
         VM_AGENT=args.vm_agent_url,
     )
 
-
 services = build_services()
 DATA_ACCESS_URL = f"{services.DATA_ACCESS}{Endpoints.SAMPLES}"
 VM_AGENT_UPLOAD_URL = f"{services.VM_AGENT}{Endpoints.VM_UPLOAD}"
 
 sio = socketio.Client()
 
+# ... [Keep your calculate_sha256_bytes and sio events exactly the same] ...
 
 def calculate_sha256_bytes(data_bytes: bytes) -> str:
     sha256_hash = hashlib.sha256()
     sha256_hash.update(data_bytes)
     return sha256_hash.hexdigest()
 
-
 @sio.event
 def connect():
     print("Connected to Core server!")
 
-
 @sio.event
 def file_sha256(data):
     print(f"\n[+] Processing file: {data}\n")
-
     # --- Step 1: Download ZIP from Data Access and upload to VM Agent ---
     try:
         with requests.get(
@@ -90,20 +115,17 @@ def file_sha256(data):
                 timeout=300
             )
             response.raise_for_status()
-            print(
-                f"[+] Uploaded {data}.zip to VM Agent: {response.status_code}")
+            print(f"[+] Uploaded {data}.zip to VM Agent: {response.status_code}")
 
     except requests.exceptions.RequestException as e:
         print(f"[-] Failed to send ZIP to VM Agent: {e}")
         return
 
-    sio.emit("file_sent_to_vm_agent", {
-             "filename": data, "status": response.status_code})
+    sio.emit("file_sent_to_vm_agent", {"filename": data, "status": response.status_code})
 
-    # --- Optional wait before retrieving analysis ---
     time.sleep(10)
 
-    # --- Step 2: Fetch JSON and TXT reports from VM Agent and verify hashes ---
+    # --- Step 2: Fetch JSON and TXT reports ---
     file_types = ["_static", "_dynamic", "_network"]
     json_ext = ".json"
     txt_ext = ".txt"
@@ -125,33 +147,26 @@ def file_sha256(data):
                     vm_hash = vm_response.get("hash")
                 else:
                     file_content_bytes = r.content
-                    # VM Agent sets this header for TXT
                     vm_hash = r.headers.get("X-File-Hash")
 
-                # Verify hash
                 computed_hash = calculate_sha256_bytes(file_content_bytes)
                 if vm_hash and computed_hash != vm_hash:
-                    print(
-                        f"[!] Hash mismatch for {filename}: VM={vm_hash}, Computed={computed_hash}")
-                    continue  # skip uploading if hash mismatch
+                    print(f"[!] Hash mismatch for {filename}: VM={vm_hash}, Computed={computed_hash}")
+                    continue 
 
-                files = {"file": (filename, io.BytesIO(
-                    file_content_bytes), "application/octet-stream")}
+                files = {"file": (filename, io.BytesIO(file_content_bytes), "application/octet-stream")}
                 upload_response = requests.post(
                     f"{services.DATA_ACCESS}/upload", files=files, timeout=30)
                 upload_response.raise_for_status()
 
                 print(f"[+] {filename} uploaded successfully to Data Access.")
-                print("Server response:", upload_response.text)
 
             except requests.exceptions.RequestException as e:
                 print(f"[-] Failed to fetch or upload {filename}: {e}")
 
-
 @sio.event
 def disconnect():
     print("Disconnected from Core server.")
-
 
 if __name__ == "__main__":
     sio.connect(services.CORE)
