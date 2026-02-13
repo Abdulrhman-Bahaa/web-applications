@@ -20,6 +20,8 @@ guest_pass = os.getenv("GUEST_PASS")
 vmx_paths_raw = os.getenv("VMX_PATHS", "")
 vmx_paths = [path.strip() for path in vmx_paths_raw.split(",") if path.strip()]
 
+ISO_PATH = os.getenv("VM_AGENT_ISO_PATH")
+
 # Create a list of VM objects
 vms = [VM(path, guest_user, guest_pass) for path in vmx_paths]
 
@@ -169,5 +171,16 @@ def disconnect():
     print("Disconnected from Core server.")
 
 if __name__ == "__main__":
-    sio.connect(services.CORE)
-    sio.wait()
+
+    vms[0].start()
+    # Wait for the guest to be ready  
+    if vms[0].wait_for_guest_ready():
+        vms[0].mount_iso(ISO_PATH)
+
+    try:
+        print(f"[*] Connecting to Core at {services.CORE}...")
+        sio.connect(services.CORE)
+        sio.wait()
+    except Exception as e:
+        print(f"[-] Connection error: {e}")
+
