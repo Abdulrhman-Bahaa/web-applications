@@ -78,6 +78,85 @@ def extract_urls(file_path):
     return list(urls)
 
 # ===============================
+# Extract Strings (ASCII + Unicode)
+# ===============================
+def extract_strings(file_path, min_length=4):
+    strings = {
+        "ascii": [],
+        "unicode": []
+    }
+
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+
+        # ASCII Strings
+        ascii_pattern = rb"[ -~]{%d,}" % min_length
+        ascii_strings = re.findall(ascii_pattern, data)
+        strings["ascii"] = [s.decode(errors="ignore") for s in ascii_strings]
+
+        # Unicode Strings (UTF-16 LE)
+        unicode_pattern = rb"(?:[ -~]\x00){%d,}" % min_length
+        unicode_strings = re.findall(unicode_pattern, data)
+        strings["unicode"] = [s.decode("utf-16le", errors="ignore") for s in unicode_strings]
+
+    except:
+        pass
+
+    return strings
+
+# ===============================
+# Extract Resources (Fixed)
+# ===============================
+def extract_resources(pe):
+    resources = []
+    version_info = {}
+    manifest_content = None
+
+    try:
+        # Version Info
+        if hasattr(pe, 'FileInfo'):
+            for fileinfo in pe.FileInfo:
+                if fileinfo.Key == b'StringFileInfo':
+                    for st in fileinfo.StringTable:
+                        for key, value in st.entries.items():
+                            version_info[key.decode(errors="ignore")] = value.decode(errors="ignore")
+
+        # Resources
+        if hasattr(pe, "DIRECTORY_ENTRY_RESOURCE"):
+            for resource_type in pe.DIRECTORY_ENTRY_RESOURCE.entries:
+                name = resource_type.name
+                if name is None:
+                    name = pefile.RESOURCE_TYPE.get(resource_type.struct.Id)
+                else:
+                    name = str(name)
+
+                if hasattr(resource_type, "directory"):
+                    for resource_id in resource_type.directory.entries:
+                        if hasattr(resource_id, "directory"):
+                            for resource_lang in resource_id.directory.entries:
+                                data_rva = resource_lang.data.struct.OffsetToData
+                                size = resource_lang.data.struct.Size
+
+                                data = pe.get_data(data_rva, size)
+
+                                if name == "RT_MANIFEST":
+                                    try:
+                                        manifest_content = data.decode(errors="ignore")
+                                    except:
+                                        pass
+
+                                resources.append({
+                                    "type": name,
+                                    "size": size
+                                })
+
+    except:
+        pass
+
+    return resources, version_info, manifest_content
+
+# ===============================
 # PE Analysis
 # ===============================
 def analyze_pe(file_path):
@@ -88,7 +167,10 @@ def analyze_pe(file_path):
         "sections": [],
         "packed": False,
         "overlay": False,
-        "entropy": 0
+        "entropy": 0,
+        "resources": [],
+        "version_info": {},
+        "manifest": None
     }
 
     try:
@@ -128,6 +210,12 @@ def analyze_pe(file_path):
                 report["overlay"] = True
         except:
             report["overlay"] = False
+
+        # Extract Resources + Version + Manifest
+        resources, version_info, manifest = extract_resources(pe)
+        report["resources"] = resources
+        report["version_info"] = version_info
+        report["manifest"] = manifest
 
     except:
         pass
@@ -194,7 +282,52 @@ def generate_text_report(report, output_path):
     lines.append(f"  SHA1:   {report['hashes']['sha1']}")
     lines.append(f"  SHA256: {report['hashes']['sha256']}")
     lines.append("")
-    
+
+    # Strings
+    if report.get('strings'):
+        lines.append("-" * 80)
+        lines.append("EXTRACTED STRINGS")
+        lines.append("-" * 80)
+        lines.append("")
+        ascii_strings = report['strings'].get('ascii', [])[:20]
+        unicode_strings = report['strings'].get('unicode', [])[:20]
+        for s in ascii_strings:
+            lines.append(f"  ASCII:   {s}")
+        for s in unicode_strings:
+            lines.append(f"  UNICODE: {s}")
+        lines.append("  ... (truncated to 20 each) ...")
+        lines.append("")
+
+    # Resources
+    if report['pe_analysis'].get('resources'):
+        lines.append("-" * 80)
+        lines.append("RESOURCES")
+        lines.append("-" * 80)
+        lines.append("")
+        for res in report['pe_analysis']['resources']:
+            lines.append(f"  Type: {res['type']}, Size: {res['size']}")
+        lines.append("")
+
+    # Version Info
+    if report['pe_analysis'].get('version_info'):
+        lines.append("-" * 80)
+        lines.append("VERSION INFO")
+        lines.append("-" * 80)
+        lines.append("")
+        for k, v in report['pe_analysis']['version_info'].items():
+            lines.append(f"  {k}: {v}")
+        lines.append("")
+
+    # Manifest
+    if report['pe_analysis'].get('manifest'):
+        lines.append("-" * 80)
+        lines.append("MANIFEST")
+        lines.append("-" * 80)
+        lines.append("")
+        manifest_preview = report['pe_analysis']['manifest'][:500].replace("\n", " ")
+        lines.append(f"  {manifest_preview} ...")
+        lines.append("")
+
     # Verdict
     lines.append("-" * 80)
     lines.append("VERDICT")
@@ -228,60 +361,7 @@ def generate_text_report(report, output_path):
         for i, reason in enumerate(report['reasons'], 1):
             lines.append(f"  {i}. {reason}")
         lines.append("")
-    
-    # PE Analysis
-    pe = report['pe_analysis']
-    if pe['is_pe']:
-        lines.append("-" * 80)
-        lines.append("PE ANALYSIS")
-        lines.append("-" * 80)
-        lines.append("")
-        lines.append(f"  PE File:       Yes")
-        lines.append(f"  Entropy:       {pe['entropy']}")
-        lines.append(f"  Packed:        {'Yes [!]' if pe['packed'] else 'No'}")
-        lines.append(f"  Overlay:       {'Yes [!]' if pe['overlay'] else 'No'}")
-        lines.append(f"  Total Imports: {len(pe['imports'])}")
-        lines.append(f"  Suspicious APIs: {len(pe['suspicious_apis'])}")
-        lines.append("")
-        
-        # Sections
-        if pe['sections']:
-            lines.append("  [SECTIONS]")
-            lines.append("  " + "-" * 40)
-            for sec in pe['sections']:
-                packed_flag = " [!PACKED!]" if sec['entropy'] > 7.2 else ""
-                lines.append(f"    {sec['name']:<12} Size: {sec['size']:>8,} bytes  Entropy: {sec['entropy']}{packed_flag}")
-            lines.append("")
-        
-        # Suspicious APIs
-        if pe['suspicious_apis']:
-            lines.append("  [SUSPICIOUS APIs DETECTED]")
-            lines.append("  " + "-" * 40)
-            for api in set(pe['suspicious_apis']):
-                weight = SUSPICIOUS_APIS.get(api, 1)
-                lines.append(f"    - {api:<25} (Weight: +{weight})")
-            lines.append("")
-    else:
-        lines.append("-" * 80)
-        lines.append("PE ANALYSIS")
-        lines.append("-" * 80)
-        lines.append("")
-        lines.append("  Not a valid PE file")
-        lines.append("")
-    
-    # URLs/IPs
-    if report['urls']:
-        lines.append("-" * 80)
-        lines.append("NETWORK INDICATORS")
-        lines.append("-" * 80)
-        lines.append("")
-        lines.append(f"  Found {len(report['urls'])} URLs/IPs:")
-        for url in report['urls'][:10]:  # Limit to 10
-            lines.append(f"    - {url}")
-        if len(report['urls']) > 10:
-            lines.append(f"    ... and {len(report['urls']) - 10} more")
-        lines.append("")
-    
+
     # Footer
     lines.append("=" * 80)
     lines.append("END OF REPORT")
@@ -309,6 +389,7 @@ def analyze_file(file_path):
 
     report["hashes"] = calculate_hashes(file_path)
     report["urls"] = extract_urls(file_path)
+    report["strings"] = extract_strings(file_path)
 
     pe_report = analyze_pe(file_path)
     report["pe_analysis"] = pe_report
@@ -377,5 +458,4 @@ def main():
     print("[*] All analyses complete")
 
 if __name__ == "__main__":
-
     main()

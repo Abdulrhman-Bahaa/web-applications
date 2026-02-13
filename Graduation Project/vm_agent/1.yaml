@@ -844,9 +844,9 @@ detection_rules:
     category: 'execution'
     field: 'process'
     action: 'create'
-    pattern: '*wmic.exe* OR *wmic*process* OR *wmic*'
+    pattern: '*wmic.exe* OR *wmic*process* OR *wmic* OR *WmiPrvSE.exe* OR *wmiprvse*'
     weight: 6
-    description: 'WMIC spawned (common in malware)'
+    description: 'WMIC or WMI Provider spawned (common in malware)'
 
   - name: 'CertUtil_Execution'
     category: 'execution'
@@ -1015,3 +1015,47 @@ detection_rules:
     pattern: '*/Winlogon/Shell'
     weight: 8
     description: 'Attempted Winlogon shell modification'
+
+  # ============================================================================
+  # WMIPRVSE BEHAVIOR DETECTION (Compatible with Current Engine)
+  # ============================================================================
+
+  - name: 'WMIPRVSE_From_AppData'
+    category: 'masquerading'
+    field: 'process'
+    action: 'create'
+    pattern: '*wmiprvse*AppData*'
+    weight: 9
+    description: 'CRITICAL: WmiPrvSE.exe running from AppData'
+
+  - name: 'WMIPRVSE_From_Temp'
+    category: 'masquerading'
+    field: 'process'
+    action: 'create'
+    pattern: '*wmiprvse*Temp*'
+    weight: 9
+    description: 'CRITICAL: WmiPrvSE.exe running from Temp'
+
+  - name: 'WMIPRVSE_From_Downloads'
+    category: 'masquerading'
+    field: 'process'
+    action: 'create'
+    pattern: '*wmiprvse*Downloads*'
+    weight: 9
+    description: 'CRITICAL: WmiPrvSE.exe running from Downloads'
+
+  - name: 'WMIPRVSE_With_Arguments'
+    category: 'execution'
+    field: 'process'
+    action: 'create'
+    pattern: '*wmiprvse*-*'
+    weight: 6
+    description: 'WmiPrvSE.exe executed with command-line arguments'
+
+  - name: 'WMIPRVSE_Execution_Test'
+    category: 'test_rule'
+    field: 'process'
+    action: 'create'
+    pattern: '*wmiprvse*'
+    weight: 2
+    description: 'Test rule to confirm ETW process detection'
