@@ -1,5 +1,10 @@
-import json, yaml, re, argparse, os
+import json
+import yaml
+import re
+import argparse
+import os
 from datetime import datetime
+
 
 class MalwareAnalyzer:
     def __init__(self, rules_path):
@@ -9,7 +14,8 @@ class MalwareAnalyzer:
         self.detected_signatures = set()
 
     def load_etw(self, path):
-        if not os.path.exists(path): return False
+        if not os.path.exists(path):
+            return False
         with open(path, encoding='utf-8') as f:
             data = json.load(f)
         self.etw_events = data.get('events', [])
@@ -17,15 +23,17 @@ class MalwareAnalyzer:
         return True
 
     def match(self, value, pattern):
-        if not value: return False
-        value, pattern = str(value).replace('\\','/'), pattern.replace('\\','/')
+        if not value:
+            return False
+        value, pattern = str(value).replace(
+            '\\', '/'), pattern.replace('\\', '/')
         if ' OR ' in pattern:
             return any(self.match(value, p.strip()) for p in pattern.split(' OR '))
-        pattern = pattern.replace('*','.*').replace('?','.')
+        pattern = pattern.replace('*', '.*').replace('?', '.')
         try:
             return re.search(pattern, value, re.IGNORECASE) is not None
         except:
-            return pattern.replace('.*','').lower() in value.lower()
+            return pattern.replace('.*', '').lower() in value.lower()
 
     def get_signature(self, rule_name, value):
         normalized = str(value).lower().replace('\\', '/').replace(' ', '')
@@ -81,12 +89,15 @@ class MalwareAnalyzer:
 
         b_reg, a_reg = set(before_registry.keys()), set(after_registry.keys())
         for key in (a_reg - b_reg):
-            events.append({"field": "registry", "action": "create", "value": key})
+            events.append(
+                {"field": "registry", "action": "create", "value": key})
         for key in (b_reg - a_reg):
-            events.append({"field": "registry", "action": "delete", "value": key})
+            events.append(
+                {"field": "registry", "action": "delete", "value": key})
         for key in (a_reg & b_reg):
             if before_registry[key] != after_registry[key]:
-                events.append({"field": "registry", "action": "modify", "value": key})
+                events.append(
+                    {"field": "registry", "action": "modify", "value": key})
 
         b_file, a_file = set(before_files.keys()), set(after_files.keys())
         for f in (a_file - b_file):
@@ -100,20 +111,25 @@ class MalwareAnalyzer:
             b_info = before_files[f]
             a_info = after_files[f]
             if b_info != a_info:
-                events.append({"field": "file", "action": "modify", "value": f})
+                events.append(
+                    {"field": "file", "action": "modify", "value": f})
                 if b_info.get('size') != a_info.get('size') or b_info.get('hash') != a_info.get('hash'):
-                    events.append({"field": "file", "action": "content_changed", "value": f})
+                    events.append(
+                        {"field": "file", "action": "content_changed", "value": f})
                 if b_info.get('permissions') != a_info.get('permissions'):
-                    events.append({"field": "file", "action": "permission_changed", "value": f})
+                    events.append(
+                        {"field": "file", "action": "permission_changed", "value": f})
                 if b_info.get('created') != a_info.get('created') or b_info.get('modified') != a_info.get('modified'):
-                    events.append({"field": "file", "action": "timestomp", "value": f})
+                    events.append(
+                        {"field": "file", "action": "timestomp", "value": f})
 
         deleted_files = {f: before_files[f] for f in (b_file - a_file)}
         created_files = {f: after_files[f] for f in (a_file - b_file)}
         for d_path, d_info in list(deleted_files.items()):
             for c_path, c_info in list(created_files.items()):
                 if d_info.get('hash') == c_info.get('hash') and d_path != c_path:
-                    events.append({"field": "file", "action": "move", "value": f"{d_path} -> {c_path}"})
+                    events.append(
+                        {"field": "file", "action": "move", "value": f"{d_path} -> {c_path}"})
                     if d_path in deleted_files:
                         del deleted_files[d_path]
                     if c_path in created_files:
@@ -122,56 +138,73 @@ class MalwareAnalyzer:
         for c_path, c_info in created_files.items():
             for existing_path, existing_info in after_files.items():
                 if c_path != existing_path and c_info.get('hash') == existing_info.get('hash'):
-                    events.append({"field": "file", "action": "copy", "value": f"{existing_path} -> {c_path}"})
+                    events.append({"field": "file", "action": "copy",
+                                  "value": f"{existing_path} -> {c_path}"})
 
-        b_procs = {f"{p['name']}|{p.get('command_line', '')}": p for p in before_procs}
-        a_procs = {f"{p['name']}|{p.get('command_line', '')}": p for p in after_procs}
+        b_procs = {
+            f"{p['name']}|{p.get('command_line', '')}": p for p in before_procs}
+        a_procs = {
+            f"{p['name']}|{p.get('command_line', '')}": p for p in after_procs}
         b_sigs = set(b_procs.keys())
         a_sigs = set(a_procs.keys())
 
         for sig in (a_sigs - b_sigs):
             p = a_procs[sig]
-            events.append({"field": "process", "action": "create", "value": p['name'], "details": p})
+            events.append({"field": "process", "action": "create",
+                          "value": p['name'], "details": p})
             parent = p.get('parent_name', '')
             if parent in ['explorer.exe', 'svchost.exe', 'lsass.exe', 'services.exe'] and p['name'] not in [parent, 'explorer.exe']:
-                events.append({"field": "process", "action": "suspicious_spawn", "value": p['name'], "parent": parent})
+                events.append({"field": "process", "action": "suspicious_spawn",
+                              "value": p['name'], "parent": parent})
             if p.get('image_path') and p.get('mapped_image') and p['image_path'] != p.get('mapped_image'):
-                events.append({"field": "process", "action": "hollow", "value": p['name']})
+                events.append(
+                    {"field": "process", "action": "hollow", "value": p['name']})
             if p.get('integrity_level') == 'System' and p.get('parent_integrity') == 'Medium':
-                events.append({"field": "process", "action": "privilege_escalation", "value": p['name']})
+                events.append(
+                    {"field": "process", "action": "privilege_escalation", "value": p['name']})
 
         for sig in (b_sigs - a_sigs):
             p = b_procs[sig]
-            events.append({"field": "process", "action": "delete", "value": p['name']})
+            events.append(
+                {"field": "process", "action": "delete", "value": p['name']})
 
         for sig in (b_sigs & a_sigs):
             b_p = b_procs[sig]
             a_p = a_procs[sig]
             if b_p != a_p:
-                events.append({"field": "process", "action": "modify", "value": a_p['name']})
+                events.append(
+                    {"field": "process", "action": "modify", "value": a_p['name']})
             if b_p.get('memory_protection') != a_p.get('memory_protection'):
-                events.append({"field": "process", "action": "memory_changed", "value": a_p['name']})
+                events.append(
+                    {"field": "process", "action": "memory_changed", "value": a_p['name']})
             b_modules = set(b_p.get('modules', []))
             a_modules = set(a_p.get('modules', []))
             for mod in (a_modules - b_modules):
-                events.append({"field": "process", "action": "dll_load", "value": f"{a_p['name']}:{mod}"})
+                events.append(
+                    {"field": "process", "action": "dll_load", "value": f"{a_p['name']}:{mod}"})
                 if any(sus in mod.lower() for sus in ['\\appdata\\', '\\temp\\', '\\downloads\\', '\\programdata\\']):
-                    events.append({"field": "process", "action": "suspicious_dll", "value": f"{a_p['name']}:{mod}"})
+                    events.append(
+                        {"field": "process", "action": "suspicious_dll", "value": f"{a_p['name']}:{mod}"})
             for mod in (b_modules - a_modules):
-                events.append({"field": "process", "action": "dll_unload", "value": f"{a_p['name']}:{mod}"})
+                events.append(
+                    {"field": "process", "action": "dll_unload", "value": f"{a_p['name']}:{mod}"})
             b_threads = b_p.get('thread_count', 0)
             a_threads = a_p.get('thread_count', 0)
             if a_threads > b_threads * 2 and a_threads > 10:
-                events.append({"field": "process", "action": "thread_spike", "value": f"{a_p['name']}:{b_threads}->{a_threads}"})
+                events.append({"field": "process", "action": "thread_spike",
+                              "value": f"{a_p['name']}:{b_threads}->{a_threads}"})
             if b_p.get('is_suspended') == False and a_p.get('is_suspended') == True:
-                events.append({"field": "process", "action": "suspend", "value": a_p['name']})
+                events.append(
+                    {"field": "process", "action": "suspend", "value": a_p['name']})
             elif b_p.get('is_suspended') == True and a_p.get('is_suspended') == False:
-                events.append({"field": "process", "action": "resume", "value": a_p['name']})
+                events.append(
+                    {"field": "process", "action": "resume", "value": a_p['name']})
             b_handles = set(h.get('name', '') for h in b_p.get('handles', []))
             a_handles = set(h.get('name', '') for h in a_p.get('handles', []))
             for h in (a_handles - b_handles):
                 if 'mutex' in h.lower() or 'mutant' in h.lower():
-                    events.append({"field": "process", "action": "mutex_create", "value": h})
+                    events.append(
+                        {"field": "process", "action": "mutex_create", "value": h})
 
         findings, score = self.apply_rules(events)
         return findings, score
@@ -224,11 +257,16 @@ class MalwareAnalyzer:
         else:
             print("\n[!] No ETW data available")
         combined = state_score + etw_score
-        if combined >= 100: risk="CRITICAL"
-        elif combined >= 60: risk="HIGH"
-        elif combined >= 30: risk="MEDIUM"
-        elif combined > 0: risk="LOW"
-        else: risk="CLEAN"
+        if combined >= 100:
+            risk = "CRITICAL"
+        elif combined >= 60:
+            risk = "HIGH"
+        elif combined >= 30:
+            risk = "MEDIUM"
+        elif combined > 0:
+            risk = "LOW"
+        else:
+            risk = "CLEAN"
         print("\n" + "="*70)
         print("RISK ASSESSMENT")
         print("="*70)
@@ -278,12 +316,12 @@ def generate_text_report(results, output_file="analysis_report.txt"):
     lines.append("")
     risk = results['risk_level']
     risk_banner = {
-        'CRITICAL':'!!! CRITICAL THREAT DETECTED !!!',
-        'HIGH':'!! HIGH RISK DETECTED !!',
-        'MEDIUM':'! MEDIUM RISK DETECTED !',
-        'LOW':'LOW RISK DETECTED',
-        'CLEAN':'NO THREATS DETECTED'
-    }.get(risk,'UNKNOWN')
+        'CRITICAL': '!!! CRITICAL THREAT DETECTED !!!',
+        'HIGH': '!! HIGH RISK DETECTED !!',
+        'MEDIUM': '! MEDIUM RISK DETECTED !',
+        'LOW': 'LOW RISK DETECTED',
+        'CLEAN': 'NO THREATS DETECTED'
+    }.get(risk, 'UNKNOWN')
     lines.append(f"  Overall Risk Level: {risk}")
     lines.append(f"  {risk_banner}")
     lines.append("")
@@ -300,15 +338,18 @@ def generate_text_report(results, output_file="analysis_report.txt"):
     if state_findings:
         lines.append(f"  Total Detections: {len(state_findings)}")
         lines.append("")
-        reg_findings = [f for f in state_findings if f.get('field') == 'registry']
+        reg_findings = [f for f in state_findings if f.get(
+            'field') == 'registry']
         file_findings = [f for f in state_findings if f.get('field') == 'file']
-        proc_findings = [f for f in state_findings if f.get('field') == 'process']
+        proc_findings = [
+            f for f in state_findings if f.get('field') == 'process']
         if reg_findings:
             lines.append("  [REGISTRY OPERATIONS]")
             lines.append("  " + "-" * 40)
             for f in reg_findings[:5]:
                 lines.append(f"    [!] {f['name']} (+{f['weight']})")
-                lines.append(f"        Action: {f['action']} | Key: {f['value'][:50]}")
+                lines.append(
+                    f"        Action: {f['action']} | Key: {f['value'][:50]}")
                 lines.append("")
             if len(reg_findings) > 5:
                 lines.append(f"    ... and {len(reg_findings) - 5} more")
@@ -318,7 +359,8 @@ def generate_text_report(results, output_file="analysis_report.txt"):
             lines.append("  " + "-" * 40)
             for f in file_findings[:5]:
                 lines.append(f"    [!] {f['name']} (+{f['weight']})")
-                lines.append(f"        Action: {f['action']} | Path: {f['value'][:50]}")
+                lines.append(
+                    f"        Action: {f['action']} | Path: {f['value'][:50]}")
                 lines.append("")
             if len(file_findings) > 5:
                 lines.append(f"    ... and {len(file_findings) - 5} more")
@@ -328,7 +370,8 @@ def generate_text_report(results, output_file="analysis_report.txt"):
             lines.append("  " + "-" * 40)
             for f in proc_findings[:5]:
                 lines.append(f"    [!] {f['name']} (+{f['weight']})")
-                lines.append(f"        Action: {f['action']} | Process: {f['value'][:50]}")
+                lines.append(
+                    f"        Action: {f['action']} | Process: {f['value'][:50]}")
                 lines.append("")
             if len(proc_findings) > 5:
                 lines.append(f"    ... and {len(proc_findings) - 5} more")
@@ -353,13 +396,17 @@ def generate_text_report(results, output_file="analysis_report.txt"):
                 lines.append(f"      Process: {details.get('name', 'N/A')}")
                 if details.get('command'):
                     cmd = details['command']
-                    lines.append(f"      Command: {cmd[:80]}{'...' if len(cmd) > 80 else ''}")
+                    lines.append(
+                        f"      Command: {cmd[:80]}{'...' if len(cmd) > 80 else ''}")
             elif event_type == 'file':
-                lines.append(f"      File: {details.get('filename', details.get('path', 'N/A'))}")
+                lines.append(
+                    f"      File: {details.get('filename', details.get('path', 'N/A'))}")
             elif event_type == 'registry':
-                lines.append(f"      Registry: [{details.get('operation', 'N/A')}] {details.get('path', 'N/A')[:60]}")
+                lines.append(
+                    f"      Registry: [{details.get('operation', 'N/A')}] {details.get('path', 'N/A')[:60]}")
             elif event_type == 'image_load':
-                lines.append(f"      DLL: {details.get('process', 'N/A')} loaded {details.get('image_path', 'N/A')[:50]}")
+                lines.append(
+                    f"      DLL: {details.get('process', 'N/A')} loaded {details.get('image_path', 'N/A')[:50]}")
             lines.append("")
         if len(etw_findings) > 10:
             lines.append(f"  ... and {len(etw_findings) - 10} more detections")
@@ -402,6 +449,7 @@ def main():
     p.add_argument('--after', required=True)
     p.add_argument('--rules', required=True)
     p.add_argument('--etw')
+    p.add_argument('--network')
     args = p.parse_args()
 
     for f in [args.before, args.after, args.rules]:
@@ -409,21 +457,29 @@ def main():
             print(f"Error: {f} not found")
             exit(1)
 
-    with open(args.before, encoding='utf-8') as f: 
+    with open(args.before, encoding='utf-8') as f:
         before = json.load(f)
-    with open(args.after, encoding='utf-8') as f: 
+    with open(args.after, encoding='utf-8') as f:
         after = json.load(f)
 
     analyzer = MalwareAnalyzer(args.rules)
     results = analyzer.analyze(before, after, args.etw)
 
+    # Include network analysis results if available
+    if args.network and os.path.exists(args.network):
+        with open(args.network, encoding='utf-8') as f:
+            network_data = json.load(f)
+        results['network_analysis'] = network_data
+        print(
+            f"[+] Network analysis integrated: {network_data.get('total_connections', 0)} connections, {network_data.get('total_dns_queries', 0)} DNS queries")
+
     ################################################################################################
     #                              GENERATE OUTPUT FILES                                           #
     ################################################################################################
-    
+
     # Generate human-readable text report
     generate_text_report(results)
-    
+
     # Generate machine-readable JSON report
     save_json_report(results)
 
