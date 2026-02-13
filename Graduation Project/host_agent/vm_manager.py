@@ -244,6 +244,55 @@ class VM:
         else:
             print(f"Cloning failed: {result.stderr}")
             return False
+        
+
+    def mount_iso(self, iso_path):
+        """
+        Mounts an ISO file to the VM's virtual CD/DVD drive.
+        
+        Args:
+            iso_path (str): Full local path to the .iso file on the host.
+        """
+        # Note: 'ide1:0' is the most common default for VMware CD/DVD drives.
+        # If your VM uses a different port, you might need 'sata0:1' or 'ide1:1'.
+        mount_cmd = [
+            self.vmrun_path, 
+            "-T", "ws", 
+            "configureDevice", 
+            self.vmx_path, 
+            "ide1:0", 
+            "deviceType", "atapi-cdrom"
+        ]
+        
+        path_cmd = [
+            self.vmrun_path, 
+            "-T", "ws", 
+            "configureDevice", 
+            self.vmx_path, 
+            "ide1:0", 
+            "fileName", iso_path
+        ]
+
+        connect_cmd = [
+            self.vmrun_path, 
+            "-T", "ws", 
+            "configureDevice", 
+            self.vmx_path, 
+            "ide1:0", 
+            "startConnected", "TRUE"
+        ]
+
+        try:
+            print(f"Connecting ISO: {iso_path}...")
+            # Set the device type to CD-ROM
+            subprocess.run(mount_cmd, check=True)
+            # Point to the specific ISO file
+            subprocess.run(path_cmd, check=True)
+            # Ensure it connects on boot/immediately
+            subprocess.run(connect_cmd, check=True)
+            print("ISO successfully mounted.")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to mount ISO. Ensure the VM is not locked by another process. Error: {e}")
 
 
     
@@ -273,8 +322,8 @@ def main():
     #     print(vm.get_ip())
 
     # vm.set_to_host_only()
-    vm.allow_fastapi_firewall(port=5003)
-    print(vm.get_ip())
+    # vm.allow_fastapi_firewall(port=5003)
+    # print(vm.get_ip())
 
 
     # vm.send_file(r"D:\Graduation Project\vm_agent\dist\vm_agent.exe", r"C:\vm_agent.exe")
