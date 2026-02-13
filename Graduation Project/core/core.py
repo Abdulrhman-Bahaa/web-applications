@@ -26,10 +26,6 @@ async def connect(sid, environ):
     print(f"Client connected: {sid}")
     connected_clients.add(sid)
 
-    # Start background task once
-    if sample_fetcher_task is None:
-        sample_fetcher_task = asyncio.create_task(sample_fetcher())
-
 
 @sio.event
 async def disconnect(sid):
@@ -128,6 +124,10 @@ if __name__ == "__main__":
     async def main():
         # Start the heartbeat as a background task
         asyncio.create_task(heartbeat())
+
+        # Start background task once
+        if sample_fetcher_task is None:
+            sample_fetcher_task = asyncio.create_task(sample_fetcher())
 
         print("Starting Socket.IO server on port 5002...")
 
